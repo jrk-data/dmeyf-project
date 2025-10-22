@@ -1,0 +1,3 @@
+2025-10-08 00:15:47,824 - __main__ - INFO - L44 - Entrenando con SEMILLA=811157, TRAIN=202102, VALID=202103
+2025-10-08 00:15:47,824 - __main__ - INFO - L51 - Usando base de datos existente...
+2025-10-08 00:15:53,311 - __main__ - INFO - L53 - Data shape: (978439, 491)
