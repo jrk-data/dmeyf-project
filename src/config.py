@@ -32,12 +32,15 @@ try:
     NFOLD = int(_cfgGeneral.get("NFOLD", 5))
     EARLY_STOPPING_ROUNDS = int(_cfgGeneral.get("EARLY_STOPPING_ROUNDS", 0))  # 0 = no usar
 
+    STORAGE_OPTUNA = _cfgGeneral.get("STORAGE_OPTUNA", None)
+    STUDY_NAME_OPTUNA = _cfgGeneral.get("STUDY_NAME_OPTUNA",None)
+
     # Competencia
     DATA_PATH = _cfg.get("DATA_PATH", "data/competencia_01.csv")
     SEEDS = _cfg.get("SEEDS")
-    MES_TRAIN = _cfg.get("MES_TRAIN", "202102")
-    MES_VALIDACION = _cfg.get("MES_VALIDACION", "202103")
-    MES_TEST = _cfg.get("MES_TEST", "202104")
+    MES_TRAIN = _cfg.get("MONTH_TRAIN", [202102])
+    MES_VALIDACION = _cfg.get("MONTH_VALIDATION", [202103])
+    MES_TEST = _cfg.get("MONTH_TEST", [202104])
     TARGET = _cfg.get("TARGET", "target")
     ID_COL = _cfg.get("ID_COL", "id")
 

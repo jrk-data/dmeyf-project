@@ -1,5 +1,6 @@
-STUDY_NAME: "lgb_optimization_competencia01"
-STORAGE: "sqlite:///output/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
+STUDY_NAME_OPTUNA: "lgb_optimization_competencia01"
+#STORAGE_OPTUNA: "sqlite:///optimizations/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
+STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
 N_TRIALS: 50                                  # 20 warmup + 30 bayesianos
 N_STARTUP_TRIALS: 20
 NFOLD: 5
