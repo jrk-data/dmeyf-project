@@ -1,4 +1,0 @@
-modelo,k_opt,ganancia_max,thr_opt,timestamp
-train_model_lgb_optimization_top_1_seed_151515_experimento_lgb_optimization_exp1,10211,348560000.0,0.0013859367652900565,2025-10-27 22:33:22
-train_model_lgb_optimization_top_1_seed_155555_experimento_lgb_optimization_exp1,8318,338420000.0,0.0024694643369515133,2025-10-27 22:33:25
-train_model_lgb_optimization_top_1_seed_515151_experimento_lgb_optimization_exp1,8595,342480000.0,0.002179253256512303,2025-10-27 22:33:29
