@@ -33,16 +33,18 @@ def binary_target(df: pl.DataFrame) -> pl.DataFrame:
     return data
 
 
-def split_train_data(data: pl.DataFrame, MES_TRAIN: list , MES_TEST: list) -> dict:
+def split_train_data(data: pl.DataFrame, MES_TRAIN: list , MES_TEST: list, MES_PRED: list) -> dict:
     logger.info("Dividiendo datos en train y test...")
     train_data = data.filter(pl.col("foto_mes").is_in(pl.Series("vals", [int(x) for x in MES_TRAIN])))
     test_data = data.filter(pl.col("foto_mes").is_in(pl.Series("vals", [int(x) for x in MES_TEST])))
-
+    pred_data = data.filter(pl.col("foto_mes").is_in(pl.Series("vals",[int(x) for x in MES_PRED])))
     columns_drop = ["clase_ternaria", "clase_peso", "clase_binaria1", "clase_binaria2"]
     logger.info(f"Dropeando: {columns_drop} ...")
     try:
         X_train_pl = train_data.drop(columns_drop)
         X_test_pl = test_data.drop(columns_drop)
+        X_pred_pl = pred_data.drop(columns_drop)
+
 
         y_train_binaria1 = train_data["clase_binaria1"].to_numpy().ravel()
         y_train_binaria2 = train_data["clase_binaria2"].to_numpy().ravel()
@@ -59,6 +61,7 @@ def split_train_data(data: pl.DataFrame, MES_TRAIN: list , MES_TEST: list) -> di
 
     response = {'X_train_pl': X_train_pl,
                 'X_test_pl': X_test_pl,
+                'X_pred_pl': X_pred_pl,
                 'y_train_binaria1': y_train_binaria1,
                 'y_train_binaria2': y_train_binaria2,
                 'y_test_binaria1': y_test_binaria1,
@@ -71,7 +74,7 @@ def split_train_data(data: pl.DataFrame, MES_TRAIN: list , MES_TEST: list) -> di
 
 
 def run_study(X_train, y_train, SEED,w_train, matching_categorical_features: None
-              ,storage_optuna, study_name_optuna):
+              ,storage_optuna, study_name_optuna, optimizar = False):
     """Crea/ejecuta el estudio Optuna (TPE bayesiano)."""
 
     def objective(trial: optuna.Trial) -> float:
@@ -137,11 +140,13 @@ def run_study(X_train, y_train, SEED,w_train, matching_categorical_features: Non
         load_if_exists=True
     )
     #study.optimize(objective(SEED,X_train, y_train,w_train, w_train, None), n_trials=N_TRIALS, show_progress_bar=True)
-    study.optimize(
-        objective,
-        n_trials=N_TRIALS,
-        show_progress_bar=True
-    )
+
+    if optimizar == True:
+        study.optimize(
+            objective,
+            n_trials=N_TRIALS,
+            show_progress_bar=True
+        )
 
     return study
 

@@ -35,12 +35,24 @@ try:
     STORAGE_OPTUNA = _cfgGeneral.get("STORAGE_OPTUNA", None)
     STUDY_NAME_OPTUNA = _cfgGeneral.get("STUDY_NAME_OPTUNA",None)
 
+    # Busca la variable optimizar, por defecto queda en False
+    OPTIMIZAR = _cfgGeneral.get("OPTIMIZAR", False)
+
+
+    # PATH MODELO
+    DIR_MODELS = _cfgGeneral.get("DIR_MODELS", ".src/models/default/")
+
+    DB_MODELS_TRAIN_PATH = _cfgGeneral.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
+
+    START_POINT = _cfgGeneral.get("START_POINT", "FEATURES")
+
     # Competencia
     DATA_PATH = _cfg.get("DATA_PATH", "data/competencia_01.csv")
     SEEDS = _cfg.get("SEEDS")
     MES_TRAIN = _cfg.get("MONTH_TRAIN", [202102])
     MES_VALIDACION = _cfg.get("MONTH_VALIDATION", [202103])
     MES_TEST = _cfg.get("MONTH_TEST", [202104])
+    MES_PRED = _cfg.get("MONTH_PRED", [202105])
     TARGET = _cfg.get("TARGET", "target")
     ID_COL = _cfg.get("ID_COL", "id")
 

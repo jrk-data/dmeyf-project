@@ -12,7 +12,13 @@ from src.config import (STUDY_NAME, DATA_PATH
                         , SEEDS, MES_TRAIN,
                         MES_VALIDACION, MES_TEST,
                         GANANCIA_ACIERTO, COSTO_ESTIMULO, DB_PATH,
-                        STUDY_NAME_OPTUNA, STORAGE_OPTUNA)
+                        STUDY_NAME_OPTUNA, STORAGE_OPTUNA, OPTIMIZAR
+                        , DIR_MODELS, MES_PRED, START_POINT)
+
+from src.train_test import (train_model
+                            , calculo_curvas_ganancia
+                            ,pred_ensamble_modelos)
+
 import os
 from datetime import datetime
 import sys
@@ -55,79 +61,105 @@ logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
 
 def main():
     logger.info(f"Entrenando con SEMILLA={SEEDS[0]}, TRAIN={MES_TRAIN}, VALID={MES_VALIDACION}")
-    if CREAR_NUEVA_BASE:
+    logger.info(f"Iniciando Pipeline desde el punto: {START_POINT}")
+
+    # ---------------------------------------------------------------------------------
+    # 1. CREACIÓN/CARGA DE DATOS (START_POINT == 'DATA')
+    # ---------------------------------------------------------------------------------
+    if START_POINT == 'DATA':
         logger.info("Creando nueva base de datos...")
+        # NOTA: Usamos CREAR_NUEVA_BASE aquí si es necesario, aunque START_POINT es más limpio.
         create_dataset_c01(DB_PATH)
-        #data = competencia_01_features(DB_PATH)
 
-    else:
-        logger.info("Usando base de datos existente...")
+    logger.info("Usando base de datos existente...")
+    # Cargo dataset base
+    logger.info("Cargando dataset comision_01...")
+    data = select_c01(DB_PATH)  # <-- 'data' es necesario para los siguientes pasos
 
-        # Cargo dataset
-        logger.info("Cargando dataset comision_01...")
-        data = select_c01(DB_PATH)
+    # Binarizar target
+    logger.info("Binarizando target...")
+    data = binary_target(data)
 
-        #############################
-        #### FEATURE ENGINEERING ####
-        ############################
-        # Creación Lags
+    # ---------------------------------------------------------------------------------
+    # 2. FEATURE ENGINEERING (START_POINT == 'FEATURES')
+    # ---------------------------------------------------------------------------------
+    if START_POINT in ['FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT']:
         logger.info(f"#### INICIO FEATURE ENGINEERING ###")
         logger.info("Creando Lags...")
-        numeric_cols = get_numeric_columns_pl(data, exclude_cols=["numero_de_cliente","foto_mes"])
+        numeric_cols = get_numeric_columns_pl(data, exclude_cols=["numero_de_cliente", "foto_mes"])
         data = feature_engineering_lag(
             data,
             numeric_cols,
             cant_lag=1,
         )
 
-        # Creación DEltas
         logger.info("Creando Deltas...")
-        data = feature_engineering_delta(data, numeric_cols,1)
+        data = feature_engineering_delta(data, numeric_cols, 1)
         logger.info(f"Data shape: {data.shape}")
-
         logger.info(f"#### FIN FEATURE ENGINEERING ###")
-        ################################
-        #### FIN FEATURE ENGINEERING ####
-        ################################
 
-        logger.info("Binarizando target...")
-        data = binary_target(data)
+    # El resto del pipeline necesita que los datos estén spliteados
+    response_split = split_train_data(data, MES_TRAIN, MES_TEST, MES_PRED)
 
-        ####################################
-        #### OPTIMIZACIÓN HIPERPARAMETROS ####
-        ####################################
+    X_train = response_split["X_train_pl"].to_pandas()
+    y_train_b2 = response_split["y_train_binaria2"]
+    w_train = response_split["w_train"]
+    y_test_class = response_split["y_test_class"]
+    X_test = response_split["X_test_pl"].to_pandas()  # Convertido a Pandas
 
-        response_split = split_train_data(data,MES_TRAIN,MES_TEST)
+    X_pred = response_split["X_pred_pl"].to_pandas()
+    # ---------------------------------------------------------------------------------
+    # 3. OPTIMIZACIÓN HIPERPARÁMETROS (START_POINT == 'OPTUNA')
+    # ---------------------------------------------------------------------------------
+    study = None
+    storage_optuna = STORAGE_OPTUNA
+    study_name_optuna = STUDY_NAME_OPTUNA
 
-
-        X_train = response_split["X_train_pl"]
-        y_train_b1 = response_split["y_train_binaria1"]
-        y_train_b2 = response_split["y_train_binaria2"]
-        w_train = response_split["w_train"]
-        y_test_class = response_split["y_test_class"]
-
-        # Seteamos path de BBDD para el study
-
-        storage_optuna = STORAGE_OPTUNA
-        study_name_optuna = STUDY_NAME_OPTUNA
-        logger.info(f"Seteando path de BBDD: {storage_optuna} - {study_name_optuna}")
-
-
-        # Transformo de polars a pandas para usar study
-        X_train = X_train.to_pandas()
-
-        #y_train_b2= y_train_b2.to_pandas()
-        #w_train = w_train.to_pandas()
-
+    if START_POINT in ['OPTUNA', 'TRAIN', 'PREDICT']:
+        logger.info(f"Seteando path de BBDD Optuna: {storage_optuna} - {study_name_optuna}")
         logger.info("Iniciando estudio...")
-        run_study(X_train[:1000],
-                              y_train_b2[:1000]
-                              , SEEDS[0]
-                              ,w_train[:1000]
-                              ,None
-                              ,storage_optuna
-                              ,study_name_optuna)
 
+        # 'run_study' maneja la carga o creación del estudio Optuna
+        study = run_study(X_train,
+                          y_train_b2
+                          , SEEDS[0]
+                          , w_train
+                          , None
+                          , storage_optuna
+                          , study_name_optuna
+                          , optimizar=OPTIMIZAR)
+        logger.info("#### FIN OPTIMIZACIÓN HIPERPARAMETROS ####")
+
+    # ---------------------------------------------------------------------------------
+    # 4. ENTRENAMIENTO Y CÁLCULO CURVAS (START_POINT == 'TRAIN')
+    # ---------------------------------------------------------------------------------
+    top_k_model = 5
+
+    if START_POINT in ['TRAIN', 'PREDICT']:
+
+        # Si no pasamos por OPTUNA, necesitamos el objeto study cargado
+        if START_POINT == 'TRAIN' and study is None:
+            logger.info("Cargando estudio Optuna existente para entrenamiento...")
+            # Aquí deberías tener una función para CARGAR el study si OPTIMIZAR es False
+            # OJO: La función run_study ya maneja la carga si OPTIMIZAR=False
+            study = run_study(X_train, y_train_b2, SEEDS[0], w_train, None, storage_optuna, study_name_optuna,
+                              optimizar=False)
+
+        logger.info("Entrenando modelos Top-K...")
+        train_model(study, X_train, y_train_b2, w_train, top_k_model)
+
+        logger.info("Calculando curvas de ganancia...")
+        y_predicciones, curvas, mejores_cortes_normalizado = calculo_curvas_ganancia(X_test, y_test_class,
+                                                                                     DIR_MODELS, study_name_optuna)
+        print(mejores_cortes_normalizado)
+
+    # ---------------------------------------------------------------------------------
+    # 5. PREDICCIÓN FINAL/ENSEMBLE (START_POINT == 'PREDICT')
+    # ---------------------------------------------------------------------------------
+    if START_POINT == 'PREDICT':
+        logger.info("Realizando predicción final (Ensemble)...")
+        # El número 6 es el parámetro 'k' que tenías en main.py para pred_ensamble_modelos
+        pred_ensamble_modelos(X_pred, DIR_MODELS, study_name_optuna, 6)
 
     print("Fin Corrida")
     #print(data.columns)

@@ -4,8 +4,6 @@ from src.config import DB_PATH, CSV_COMP
 from pathlib import Path
 
 
-print(DB_PATH)
-
 
 
 def create_dataset_c01(DB_PATH,CSV_COMP = CSV_COMP):
