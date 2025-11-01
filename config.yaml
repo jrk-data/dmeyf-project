@@ -1,0 +1,22 @@
+STUDY_NAME_OPTUNA: "lgb_optimization_competencia01"
+#STORAGE_OPTUNA: "sqlite:///optimizations/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
+STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
+N_TRIALS: 50                                  # 20 warmup + 30 bayesianos
+N_STARTUP_TRIALS: 20
+NFOLD: 5
+EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
+DB_PATH: "data/churn.duckdb"
+DATA_PATH: "data/competencia_01_crudo.csv"
+PRUEBA:"ESTO NO HACE NADA"
+competencia01:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515]
+  MONTH_TRAIN: [202102,202103]
+  MONTH_VALIDATION: [202103]
+  MONTH_TEST: [202104]
+
+  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
+
+  ID_COL: "numero_de_cliente"
+  # negocio (por si luego cambias a métrica custom de ganancia)
+  GANANCIA_ACIERTO: 780000
+  COSTO_ESTIMULO: 20000
