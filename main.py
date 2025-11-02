@@ -32,7 +32,7 @@ name_log = f"log_{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
 
 fmt = "%(asctime)s - %(name)s - %(levelname)s - L%(lineno)d - %(message)s"
 
-file_handler = logging.FileHandler(f"/home/joaquinrk_data/buckets/b1/logs/{name_log}", mode="w", encoding="utf-8")
+file_handler = logging.FileHandler(f"logs/{name_log}", mode="w", encoding="utf-8")
 stream_handler = logging.StreamHandler(sys.stdout)
 
 file_handler.setFormatter(logging.Formatter(fmt))
