@@ -32,7 +32,7 @@ EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stoppi
 # ------------------------------------------------------------------
 # NUEVA VARIABLE PARA CONTROL DE FLUJO
 # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-START_POINT: "DATA"
+START_POINT: "FEATURES"
 # ------------------------------------------------------------------
 
 
