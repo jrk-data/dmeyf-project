@@ -2,12 +2,15 @@ import duckdb
 import os
 from src.config import DB_PATH, CSV_COMP
 from pathlib import Path
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 
 def create_dataset_c01(DB_PATH,CSV_COMP = CSV_COMP):
     CSV_COMP = CSV_COMP
+    logger.info(f"Creando base de datos en\n {DB_PATH} \n {CSV_COMP}")
     try:
 
         con = duckdb.connect(str(DB_PATH))
@@ -55,8 +58,8 @@ def create_dataset_c01(DB_PATH,CSV_COMP = CSV_COMP):
 
         con.close()
     except Exception as e:
+        logger.error(e)
         con.close()
-        print(e)
     finally:
         con.close()
 
