@@ -66,13 +66,19 @@ def create_dataset_c01(DB_PATH,CSV_COMP = CSV_COMP):
 
 def select_c01(DB_PATH):
     try:
+        logger.info("Cargando base de datos competencia_01...")
         con = duckdb.connect(str(DB_PATH))
         query = con.sql("SELECT * FROM competencia_01").pl()
+
+        # para chequear que levanta el dataset
+        logger.info(query.head(5))
+
         con.close()
 
     except Exception as e:
         con.close()
-        print(e)
+        logger.error(e)
     finally:
         con.close()
+        logger.info("Se ha cargado la base de datos")
     return query
