@@ -8,7 +8,7 @@
 #DATA_PATH: "data/competencia_01_crudo.csv"
 #DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
 #LOGS_PATH: "logs/"
-NUEVA_BASE: False
+NUEVA_BASE: True
 
 
 # Config VM
@@ -32,7 +32,7 @@ EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stoppi
 # ------------------------------------------------------------------
 # NUEVA VARIABLE PARA CONTROL DE FLUJO
 # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-START_POINT: "FEATURES"
+START_POINT: "DATA"
 # ------------------------------------------------------------------
 
 

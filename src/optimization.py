@@ -19,18 +19,24 @@ logger = getLogger(__name__)
 
 def binary_target(df: pl.DataFrame) -> pl.DataFrame:
     """Binariza una columna de un DataFrame."""
-    data = df.with_columns([
-        pl.when(pl.col("clase_ternaria") == "BAJA+2").then(1.00002)
-        .when(pl.col("clase_ternaria") == "BAJA+1").then(1.00001)
-        .otherwise(1.0)
-        .alias("clase_peso")
-    ])
-    data = data.with_columns([
-        pl.when(pl.col("clase_ternaria") == "BAJA+2").then(1).otherwise(0).alias("clase_binaria1"),
-        pl.when(pl.col("clase_ternaria") == "CONTINUA").then(0).otherwise(1).alias("clase_binaria2"),
-    ])
+    try:
+        logger.info("Asignando Pesos a los targets")
+        data = df.with_columns([
+            pl.when(pl.col("clase_ternaria") == "BAJA+2").then(1.00002)
+            .when(pl.col("clase_ternaria") == "BAJA+1").then(1.00001)
+            .otherwise(1.0)
+            .alias("clase_peso")
+        ])
 
-    return data
+        logger.info("Creando targets binarios 1 y 2")
+        data = data.with_columns([
+            pl.when(pl.col("clase_ternaria") == "BAJA+2").then(1).otherwise(0).alias("clase_binaria1"),
+            pl.when(pl.col("clase_ternaria") == "CONTINUA").then(0).otherwise(1).alias("clase_binaria2"),
+        ])
+    except Exception as e:
+        logger.error(f"Error en binarizar target: {e}")
+    finally:
+        return data
 
 
 def split_train_data(data: pl.DataFrame, MES_TRAIN: list , MES_TEST: list, MES_PRED: list) -> dict:
