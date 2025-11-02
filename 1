@@ -1,11 +1,5 @@
 nohup: ignoring input
 Traceback (most recent call last):
-  File "/home/joaquinrk_data/dmeyf-project/main.py", line 35, in <module>
-    file_handler = logging.FileHandler(f"{LOGS_PATH}{name_log}", mode="w", encoding="utf-8")
-  File "/home/joaquinrk_data/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 1219, in __init__
-    StreamHandler.__init__(self, self._open())
-                                 ~~~~~~~~~~^^
-  File "/home/joaquinrk_data/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 1248, in _open
-    return open_func(self.baseFilename, self.mode,
-                     encoding=self.encoding, errors=self.errors)
-FileNotFoundError: [Errno 2] No such file or directory: '/home/joaquinrk_data/buckets/b1/logs/log_20251102-183526.log'
+  File "/home/joaquinrk_data/dmeyf-project/main.py", line 4, in <module>
+    from colorlog import exception
+ModuleNotFoundError: No module named 'colorlog'
