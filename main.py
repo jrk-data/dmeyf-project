@@ -27,6 +27,10 @@ from datetime import datetime
 import sys
 
 # Set logs
+print('set logs')
+
+print(LOGS_PATH)
+
 os.makedirs("logs", exist_ok=True)
 name_log = f"log_{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
 
