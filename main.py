@@ -11,7 +11,7 @@ from src.optimization import (binary_target,
                               split_train_data,
                               run_study
                               )
-from src.config import (CREAR_NUEVA_BASE, DATA_PATH
+from src.config import (CREAR_NUEVA_BASE, DATA_PATH, LOGS_PATH
                         , SEEDS, MES_TRAIN,
                         MES_VALIDACION, MES_TEST,
                         GANANCIA_ACIERTO, COSTO_ESTIMULO, DB_PATH,
@@ -33,7 +33,7 @@ name_log = f"log_{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
 
 fmt = "%(asctime)s - %(name)s - %(levelname)s - L%(lineno)d - %(message)s"
 
-file_handler = logging.FileHandler(f"logs/{name_log}", mode="w", encoding="utf-8")
+file_handler = logging.FileHandler(f"{LOGS_PATH}{name_log}", mode="w", encoding="utf-8")
 stream_handler = logging.StreamHandler(sys.stdout)
 
 file_handler.setFormatter(logging.Formatter(fmt))

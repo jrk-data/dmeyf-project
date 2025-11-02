@@ -7,7 +7,7 @@
 #DB_PATH: "data/churn.duckdb"
 #DATA_PATH: "data/competencia_01_crudo.csv"
 #DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
-
+#LOGS_PATH: "logs/"
 NUEVA_BASE: True
 
 
@@ -18,7 +18,7 @@ DB_PATH: "/home/joaquinrk_data/buckets/b1/datasets/churn.duckdb"
 DATA_PATH: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
 DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/datasets/models_train_test.duckdb"
 CSV_COMP: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
-
+LOGS_PATH: "/home/joaquinrk_data/buckets/b1/logs/"
 # NOMBRE EXPERIMENTO
 STUDY_NAME_OPTUNA: "lgb_optimization_exp1_vm"
 
