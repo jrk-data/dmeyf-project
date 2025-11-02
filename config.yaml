@@ -8,7 +8,7 @@
 #DATA_PATH: "data/competencia_01_crudo.csv"
 #DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
 #LOGS_PATH: "logs/"
-NUEVA_BASE: True
+NUEVA_BASE: False
 
 
 # Config VM
