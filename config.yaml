@@ -1,17 +1,29 @@
-STUDY_NAME_OPTUNA: "lgb_optimization_exp1"
 #STUDY_NAME_OPTUNA: "no-name-58aad351-e6cd-4a0f-aa54-2821f1033b79"
 #STORAGE_OPTUNA: "sqlite:///optimizations/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
-STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
 
-DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
+# CONFIG Local
+#STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
+#DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
+#DB_PATH: "data/churn.duckdb"
+#DATA_PATH: "data/competencia_01_crudo.csv"
+#DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
+
+# Config VM
+STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
+DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"
+DB_PATH: "/home/joaquinrk_data/buckets/b1/data/churn.duckdb"
+DATA_PATH: "/home/joaquinrk_data/buckets/b1/data/competencia_01_crudo.csv"
+DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/data/models_train_test.duckdb"
+
+
+# NOMBRE EXPERIMENTO
+STUDY_NAME_OPTUNA: "lgb_optimization_exp1"
 
 N_TRIALS: 50                                  # 20 warmup + 30 bayesianos
 N_STARTUP_TRIALS: 20
 NFOLD: 5
 EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
-DB_PATH: "data/churn.duckdb"
-DATA_PATH: "data/competencia_01_crudo.csv"
-DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
+
 
 
 # ------------------------------------------------------------------
@@ -31,8 +43,8 @@ competencia01:
   MONTH_PRED: [202106]
 
   TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
-
   ID_COL: "numero_de_cliente"
+
   # negocio (por si luego cambias a métrica custom de ganancia)
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
