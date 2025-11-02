@@ -23,6 +23,7 @@ try:
     _cfg = _cfgGeneral["competencia01"]
 
     # Generales
+    CREAR_NUEVA_BASE = _cfgGeneral.get("NUEVA_BASE", False)
     DB_PATH = _cfgGeneral.get("DB_PATH", "data/churn.duckdb")
     CSV_COMP = _cfgGeneral.get("CSV_COMP", "data/competencia_01_crudo.csv")
     STUDY_NAME = _cfgGeneral.get("STUDY_NAME", "default_study")

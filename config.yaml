@@ -8,6 +8,9 @@
 #DATA_PATH: "data/competencia_01_crudo.csv"
 #DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
 
+NUEVA_BASE: True
+
+
 # Config VM
 STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
 DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"

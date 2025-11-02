@@ -8,7 +8,7 @@ from src.optimization import (binary_target,
                               split_train_data,
                               run_study
                               )
-from src.config import (STUDY_NAME, DATA_PATH
+from src.config import (CREAR_NUEVA_BASE, DATA_PATH
                         , SEEDS, MES_TRAIN,
                         MES_VALIDACION, MES_TEST,
                         GANANCIA_ACIERTO, COSTO_ESTIMULO, DB_PATH,
@@ -41,7 +41,7 @@ logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, stream_handler]
 logger = logging.getLogger(__name__)
 
 
-CREAR_NUEVA_BASE = False
+CREAR_NUEVA_BASE = CREAR_NUEVA_BASE
 # =====================
 
 logger = logging.getLogger(__name__)
