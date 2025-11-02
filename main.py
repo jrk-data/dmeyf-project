@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 ### Manejo de Configuración en YAML ###
 logger.info("Configuración cargada desde YAML")
-logger.info(f"STUDY_NAME: {STUDY_NAME}")
+logger.info(f"STUDY_NAME: {STUDY_NAME_OPTUNA}")
 logger.info(f"DATA_PATH: {DATA_PATH}")
 logger.info(f"DB_PATH: {DB_PATH}")
 logger.info(f"SEMILLA: {SEEDS[0]}")
