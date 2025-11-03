@@ -16,9 +16,13 @@ def select_bigquery(query: str, project_id: str):
     print("🚀 Ejecutando query en BigQuery...\n")
     job = client.query(query)
     job.result()  # Espera a que termine la ejecución
+
+    rows = [dict(row) for row in job.result()]
     print("✅ Query ejecutada correctamente.")
     print(f"Job ID: {job.job_id}")
 
+    print(rows)
+    return rows
 if __name__ == '__main__':
     query = f'SELECT * FROM `{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE_TARGETS}` where foto_mes = 202003 LIMIT 10'
     print(query)
