@@ -21,5 +21,6 @@ def select_bigquery(query: str, project_id: str):
 
 if __name__ == '__main__':
     query = f'SELECT * FROM `{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE_TARGETS}` where foto_mes = 202003 LIMIT 10'
+    print(query)
     select = select_bigquery(query, BQ_PROJECT)
     print(select)
