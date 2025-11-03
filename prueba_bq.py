@@ -1,4 +1,5 @@
 from google.cloud import bigquery
+
 from src.config import (BQ_PROJECT, BQ_DATASET, BQ_TABLE, BQ_TABLE_TARGETS)
 
 
