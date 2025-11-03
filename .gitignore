@@ -4,4 +4,13 @@ optimizations/*
 logs/*
 models/*
 
+<<<<<<< HEAD
 TESTEOS_C2.ipynb
+=======
+*.ipynb__pycache__/
+*.pyc
+*.pyo
+*.pyd
+>>>>>>> 17e7933 (Stop tracking compiled artifacts)
+__pycache__/
+*.pyc
