@@ -3,3 +3,5 @@ output/*
 optimizations/*
 logs/*
 models/*
+
+*.ipynb

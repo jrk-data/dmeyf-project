@@ -2,25 +2,25 @@
 #STORAGE_OPTUNA: "sqlite:///optimizations/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
 
 # CONFIG Local
-#STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
-#DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
-#DB_PATH: "data/churn.duckdb"
-#DATA_PATH: "data/competencia_01_crudo.csv"
-#DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
-#LOGS_PATH: "logs/"
+STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
+DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
+DB_PATH: "data/churn.duckdb"
+DATA_PATH: "data/competencia_01_crudo.csv"
+DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
+LOGS_PATH: "logs/"
 NUEVA_BASE: True
 
 
 # Config VM
-STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
-DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"
-DB_PATH: "/home/joaquinrk_data/buckets/b1/datasets/churn.duckdb"
-DATA_PATH: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
-DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/datasets/models_train_test.duckdb"
-CSV_COMP: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
-LOGS_PATH: "/home/joaquinrk_data/buckets/b1/logs/"
+#STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
+#DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"
+#DB_PATH: "/home/joaquinrk_data/buckets/b1/datasets/churn.duckdb"
+#DATA_PATH: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
+#DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/datasets/models_train_test.duckdb"
+#CSV_COMP: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
+#LOGS_PATH: "/home/joaquinrk_data/buckets/b1/logs/"
 # NOMBRE EXPERIMENTO
-STUDY_NAME_OPTUNA: "lgb_optimization_exp1_vm"
+STUDY_NAME_OPTUNA: "lgb_optimization_exp2_local"
 
 N_TRIALS: 10                                  # 20 warmup + 30 bayesianos
 N_STARTUP_TRIALS: 20
@@ -51,3 +51,20 @@ competencia01:
   # negocio (por si luego cambias a métrica custom de ganancia)
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
+
+competencia02:
+
+  BQ_PROJECT: "dmecoyfin-250928192534125"
+  BQ_DATASET: "dmeyf"
+  BQ_TABLE: "c02"
+  BQ_TABLE_TARGETS: "targets"
+  BQ_TABLE_FEATURES: "features"
+
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  MONTH_TRAIN: [ 202102,202103 ]
+  MONTH_VALIDATION: [ 202103 ]
+  MONTH_TEST: [ 202104 ]
+  MONTH_PRED: [ 202106 ]
+
+  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
+  ID_COL: "numero_de_cliente"

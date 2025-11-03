@@ -3,6 +3,8 @@ import os, sys, logging
 from datetime import datetime
 from pathlib import Path
 
+# ---- INSTANCIO LOS LOGS PARA REGISTRAR CUALQUIER ERROR DE IMPORT
+
 # Elegí un path ABSOLUTO para que no dependa del cwd
 LOGS_PATH = Path("/home/joaquinrk_data/dmeyf-project/logs")
 LOGS_PATH.mkdir(parents=True, exist_ok=True)
@@ -18,6 +20,9 @@ stream_handler.setFormatter(logging.Formatter(fmt))
 logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler], force=True)
 logger = logging.getLogger(__name__)
 logger.info("Logger inicializado")
+
+
+######################################################################
 
 from src.loader import create_dataset_c01, select_c01
 from src.features import (get_numeric_columns_pl,
@@ -38,31 +43,8 @@ from src.train_test import (train_model
                             , calculo_curvas_ganancia
                             ,pred_ensamble_modelos)
 
-import os
-from datetime import datetime
-import sys
 
-# # Set logs
-# print('set logs')
-#
-# print(LOGS_PATH)
-#
-# os.makedirs("logs", exist_ok=True)
-# name_log = f"log_{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
-#
-# fmt = "%(asctime)s - %(name)s - %(levelname)s - L%(lineno)d - %(message)s"
-#
-# file_handler = logging.FileHandler(f"logs/{name_log}", mode="w", encoding="utf-8")
-# stream_handler = logging.StreamHandler(sys.stdout)
-#
-# file_handler.setFormatter(logging.Formatter(fmt))
-# stream_handler.setFormatter(logging.Formatter(fmt))
-#
-# # force=True borra handlers previos (útil si corrés varias veces)
-# logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, stream_handler], force=True)
-# logger = logging.getLogger(__name__)
-
-
+# FLAG para crear BBDD de cero o no
 CREAR_NUEVA_BASE = CREAR_NUEVA_BASE
 # =====================
 

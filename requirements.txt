@@ -15,3 +15,6 @@ plotly
 umap-learn
 pyarrow
 fastparquet
+
+google-cloud-bigquery
+google-cloud-storage
