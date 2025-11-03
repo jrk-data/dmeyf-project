@@ -21,6 +21,6 @@ def select_bigquery(query: str, project_id: str):
     print(f"Job ID: {job.job_id}")
 
 if __name__ == '__main__':
-    query = f'SELECT * FROM {BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE_TARGETS} where foto_mes = 202003 LIMIT 10'
+    query = f'SELECT * FROM `{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE_TARGETS}` where foto_mes = 202003 LIMIT 10'
     select = select_bigquery(query, BQ_PROJECT)
     print(select)
