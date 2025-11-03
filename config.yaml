@@ -32,11 +32,11 @@ EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stoppi
 # ------------------------------------------------------------------
 # NUEVA VARIABLE PARA CONTROL DE FLUJO
 # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-START_POINT: "DATA"
+START_POINT: "PREDICT"
 # ------------------------------------------------------------------
 
 
-OPTIMIZAR: False
+OPTIMIZAR: True
 
 competencia01:
   SEEDS: [ 155555, 555555, 551155, 515151, 151515]
