@@ -1,5 +1,4 @@
 from google.cloud import bigquery
-from jedi.inference.compiled.subprocess import __main__
 
 from src.config import (BQ_PROJECT, BQ_DATASET, BQ_TABLE, BQ_TABLE_TARGETS)
 
