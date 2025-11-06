@@ -19,7 +19,8 @@ logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
 
 
-def train_model(study,X_train, y_train, weights, k):
+def train_model(study, X_train, y_train, weights, k,
+                experimento, save_root, seeds, logger):
 
     # Seleccionar top-k trials según 'value'
     df_trials = study.trials_dataframe()
@@ -34,9 +35,8 @@ def train_model(study,X_train, y_train, weights, k):
     # Datos a entrenar
     train_data = lgb.Dataset(X_train, label=y_train, weight=weights)
 
-    # Path donde se guarda modelo entrenado
-    save_dir = Path(f"/home/joacosk/Documents/maestria/Q2/script_project/src/models/{STUDY_NAME_OPTUNA}/")
-    # Si el path no existe, lo creamos
+    # PATH DE MODELOS: por experimento/mes
+    save_dir = Path(save_root) / str(experimento)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     # Seteo parámetros fijos
@@ -67,10 +67,9 @@ def train_model(study,X_train, y_train, weights, k):
         # Obtengo los parámetros del trial
         params.update(trial_obj.params)
 
-        for seed in SEEDS:
-
+        for seed in seeds:
             try:
-                file = f"train_model_lgb_optimization_top_{top_rank + 1}_seed_{seed}_experimento_{experimento}.txt"
+                file = f"lgb_top{top_rank + 1}_seed_{int(seed)}.txt"
                 check_path = save_dir / file
 
                 logger.info(f"Entrenando modelo {file}")
@@ -113,7 +112,7 @@ def train_model(study,X_train, y_train, weights, k):
 
     logger.info(f"Modelos entrenados y guardados en {save_dir}")
     meta = pd.DataFrame(resumen_rows)
-    TABLE_NAME = str(experimento) + '_train'  # Definimos el nombre de la tabla una vez
+    TABLE_NAME = f"{experimento}_train"  # Definimos el nombre de la tabla una vez
 
     try:
         # 1. Usamos 'with' para asegurar el cierre automático de la conexión
@@ -187,7 +186,7 @@ def calculo_curvas_ganancia(Xif,
 
     # Concateno dirección de carpeta de modelos con nombre de experimento (que oficia de directorio)
 
-    dir_model_opt = Path(dir_model_opt + STUDY_NAME_OPTUNA)
+    dir_model_opt = Path(dir_model_opt)
 
     logger.info(f"Seteando path para guardar modelos del experimento: {dir_model_opt}")
 
@@ -272,11 +271,7 @@ def calculo_curvas_ganancia(Xif,
         k_mejor = int(piso_envios + argmax_local)
         ganancia_max = float(curva_segmento[argmax_local])
 
-        # Mejor probabilidad de corte
-        thr_opt = gan_ord[k_mejor]
-
-        # Umbral de probabilidad en el mejor k (ojo índice 0-based)
-        k_idx = max(k_mejor - 1, 0)  # por seguridad si k_mejor==0 (no debería)
+        k_idx = max(k_mejor - 1, 0)
         thr_opt = float(y_pred_sorted[k_idx])
 
         # Se usa el método stem del objeto Path para quedarse con el nombre del archivo sin su extensión
@@ -285,6 +280,7 @@ def calculo_curvas_ganancia(Xif,
 
         # Para el CSV resumen
         resumen_rows.append({
+            "experimento": dir_model_opt.name,  # ej: STUDY_NAME_OPTUNA_202003
             "modelo": nombre,
             "k_opt": int(k_mejor),
             "ganancia_max": float(ganancia_max),
@@ -358,48 +354,40 @@ def calculo_curvas_ganancia(Xif,
             # 1. Crear Vista Temporal (Asegura que DuckDB vea el DF 'nuevos')
             con.execute("CREATE OR REPLACE TEMP VIEW nuevos_data AS SELECT * FROM nuevos;")
 
-            TABLE_NAME = str(resumen_path.name) + '_test'
+            TABLE_NAME = f"{resumen_path.stem}_test"  # usa stem para evitar '.csv' en el nombre
 
-            # 2. Asegurar la Tabla y la PK
+            # 2. Asegurar la Tabla y la PK compuesta (experimento, modelo)
             try:
-                # CREAMOS la tabla si no existe, usando el esquema de la vista temporal
                 con.execute(f"CREATE TABLE IF NOT EXISTS {TABLE_NAME} AS SELECT * FROM nuevos_data WHERE 1=0;")
                 logger.info(f"Tabla '{TABLE_NAME}' asegurada (creada si no existía).")
-
-                # Intentamos añadir la clave primaria (modelo)
-                # Ojo: Usamos (modelo) sin comillas dobles
-                q_alter = F'ALTER TABLE {TABLE_NAME} ADD PRIMARY KEY (modelo);'
+                # PK compuesta
+                q_alter = f'ALTER TABLE {TABLE_NAME} ADD PRIMARY KEY (experimento, modelo);'
                 con.sql(q_alter)
-                logger.info(f"Clave primaria (modelo) añadida a la tabla '{TABLE_NAME}'.")
-
+                logger.info(f"Clave primaria (experimento, modelo) añadida a la tabla '{TABLE_NAME}'.")
             except Exception as e:
                 error_msg = str(e).lower()
                 if "already exists for this table" in error_msg:
                     logger.warning(f"La clave primaria en '{TABLE_NAME}' ya existía. Continuando con MERGE.")
-                    pass
                 else:
                     logger.error(f"Error CRÍTICO al crear/modificar tabla {TABLE_NAME}: {e}")
                     raise
 
-            # 3. USAR MERGE INTO (Más robusto que ON CONFLICT)
-            # Objetivo: Si existe, actualizamos el timestamp. Si NO existe (la fila eliminada), la insertamos.
+            # 3. MERGE usando (experimento, modelo)
             current_timestamp = datetime.now().strftime("'%Y-%m-%d %H:%M:%S'")
 
             con.execute(f"""
-                    MERGE INTO {TABLE_NAME} AS t
-                    USING nuevos_data AS s
-                    ON t.modelo = s.modelo
-                    WHEN MATCHED THEN
-                        -- Si el registro existe, actualizamos el timestamp (y otros campos si quieres)
-                        UPDATE SET 
-                            ganancia_max = s.ganancia_max,
-                            k_opt = s.k_opt,
-                            thr_opt = s.thr_opt,
-                            timestamp = {current_timestamp} -- Actualizamos el timestamp de la fila existente
-                    WHEN NOT MATCHED THEN
-                        -- Si el registro no existe (la fila eliminada), la insertamos
-                        INSERT *;
-                """)
+                MERGE INTO {TABLE_NAME} AS t
+                USING nuevos_data AS s
+                ON t.experimento = s.experimento AND t.modelo = s.modelo
+                WHEN MATCHED THEN
+                    UPDATE SET 
+                        ganancia_max = s.ganancia_max,
+                        k_opt = s.k_opt,
+                        thr_opt = s.thr_opt,
+                        timestamp = {current_timestamp}
+                WHEN NOT MATCHED THEN
+                    INSERT *;
+            """)
             logger.info(
                 f'Se procesaron registros en tabla {TABLE_NAME} usando MERGE. (Fila faltante insertada, existentes actualizadas).')
 
@@ -412,7 +400,7 @@ def calculo_curvas_ganancia(Xif,
     if resumen_path.exists():
         prev = pd.read_csv(resumen_path)
         merged = pd.concat([prev, nuevos], ignore_index=True)
-        merged.drop_duplicates(subset=["modelo"], keep="last", inplace=True)
+        merged.drop_duplicates(subset=["experimento", "modelo"], keep="last", inplace=True)
         resumen_path = resumen_path.with_suffix(".csv")
         merged.to_csv(resumen_path, index=False)
     else:
@@ -424,107 +412,116 @@ def calculo_curvas_ganancia(Xif,
     return y_predicciones,curvas, mejores_cortes_normalizado
 
 
-def pred_ensamble_modelos(Xif,
-                     dir_model_opt,
-                    experimento,
-                     k
-                     ):
-    # Me conecto a duckdb y selecciono el top 5 de modelos
-    con = duckdb.connect(str(DB_MODELS_TRAIN_PATH))
-    q = f'select * from {experimento}_test order by ganancia_max desc limit {k};'
-    df_top_k = con.sql(q).df()
-    con.close()
-    logger.info(f"Se seleccionaron los 5 mejores modelos de la tabla {experimento}_test")
+def pred_ensamble_modelos(
+    Xif: pd.DataFrame,
+    dir_model_opt: str | Path,   # p.ej. ".../src/models/STUDY_NAME_OPTUNA_202003"
+    experimento: str,            # p.ej. "STUDY_NAME_OPTUNA_202003"
+    k: int
+) -> pd.DataFrame:
+    """
+    Ensambla las predicciones de los top-k modelos (por 'ganancia_max')
+    del experimento/mes indicado, aplicando voto de mayoría con el 'thr_opt' por modelo.
+    Guarda CSV final de predicciones y retorna el DataFrame.
+    """
+    base_dir = Path(dir_model_opt)
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # ===== 1) Top-K modelos desde DuckDB, filtrando por experimento =====
+    with duckdb.connect(str(DB_MODELS_TRAIN_PATH)) as con:
+        # Ojo: esta tabla es la que definiste en calculo_curvas_ganancia()
+        # TABLE_NAME = f"{resumen_path.stem}_test"  (por defecto: "resumen_ganancias_modelos_test")
+        # Si usaste el nombre por defecto:
+        table_resumen = "resumen_ganancias_modelos_test"
+        q = f"""
+            SELECT modelo, thr_opt, ganancia_max
+            FROM {table_resumen}
+            WHERE experimento = ?
+            ORDER BY ganancia_max DESC
+            LIMIT {int(k)};
+        """
+        df_top_k = con.execute(q, [experimento]).df()
+
+    if df_top_k.empty:
+        logger.error(f"No se encontraron modelos para experimento '{experimento}' en {table_resumen}.")
+        return pd.DataFrame(columns=['numero_de_cliente', 'foto_mes', 'y_pred'])
+
+    logger.info(f"[{experimento}] Top-{k} modelos seleccionados:")
     logger.info(df_top_k)
 
-    list_of_predictions = []
-    # =========================================================================
-    # 1. GENERAR PREDICCIÓN BINARIA PARA CADA MODELO Y CADA CLIENTE
-    # =========================================================================
-    base_dir = Path(dir_model_opt)
+    # ===== 2) Predicción binaria por modelo =====
+    lista_votos = []
 
-    for modelo in df_top_k['modelo']:
-        # Obtengo el thr_optimo
-        # CORRECCIÓN IMPORTANTE: Usar .iloc[0] para extraer el valor escalar de la selección.
-        try:
-            thr_opt = df_top_k[df_top_k['modelo'] == modelo]['thr_opt'].iloc[0]
-        except IndexError:
-            logger.error(f"No se encontró el umbral óptimo ('thr_opt') para el modelo: {modelo}")
-            continue
+    for _, row in df_top_k.iterrows():
+        modelo = str(row['modelo'])
+        thr_opt = float(row['thr_opt'])
 
-        logger.info(f"Prediciendo con modelo {modelo} (Thr: {thr_opt:.5f})")
-        model_path = base_dir / experimento / modelo
+        # Los modelos se guardaron como: base_dir / "lgb_top{rank}_seed_{seed}.txt"
+        # df_top_k['modelo'] ya trae el nombre de archivo (sin extensión o con .txt/.bin).
+        model_path = base_dir / modelo
+        if not model_path.suffix:
+            # probar .txt y .bin
+            cand_txt = model_path.with_suffix('.txt')
+            cand_bin = model_path.with_suffix('.bin')
+            if cand_txt.exists():
+                model_path = cand_txt
+            elif cand_bin.exists():
+                model_path = cand_bin
 
-        # Aseguramos que el archivo termine en .txt o .bin (ya que 'modelo' es el nombre base)
         if not model_path.exists():
-            model_path = model_path.with_suffix('.txt')
-            if not model_path.exists():
-                logger.error(f"Archivo de modelo no encontrado en: {model_path}")
-                continue
-
-        try:
-            model = lgb.Booster(model_file=str(model_path))
-
-            # Extraigo nombres de features que se usaron para entrenar el modelo
-            feature_names = model.feature_name()
-            # Filtro el dataset con las features utilizadas para entrenar el modelo
-            Xif_filtered = Xif[feature_names]
-
-            y_pred_prob = model.predict(Xif_filtered)
-        except Exception as e:
-            logger.error(f"Error al cargar/predecir con modelo {modelo}: {e}")
+            logger.error(f"[{experimento}] Modelo no encontrado: {model_path}")
             continue
 
-        # DataFrame auxiliar para guardar la predicción BINARIA (el voto)
-        df_pred_bin = Xif[['numero_de_cliente', 'foto_mes']].copy()
+        try:
+            booster = lgb.Booster(model_file=str(model_path))
+            feature_names = booster.feature_name()
 
-        # Aplicar el umbral óptimo y guardar el voto como una columna separada
-        # Usamos np.where para mayor eficiencia que .apply()
-        df_pred_bin[f'voto_{modelo}'] = np.where(y_pred_prob >= thr_opt, 1, 0)
+            # Alinear features del test con las del modelo
+            Xif_filtered = Xif.reindex(columns=feature_names, fill_value=0)
 
-        list_of_predictions.append(df_pred_bin)
+            y_pred_prob = booster.predict(Xif_filtered)
+        except Exception as e:
+            logger.error(f"[{experimento}] Error con modelo {modelo}: {e}")
+            continue
 
-    # =========================================================================
-    # 2. CONSOLIDAR Y APLICAR EL VOTO DE MAYORÍA
-    # =========================================================================
+        df_voto = Xif[['numero_de_cliente', 'foto_mes']].copy()
+        df_voto[f'voto_{Path(modelo).stem}'] = (y_pred_prob >= thr_opt).astype(int)
+        lista_votos.append(df_voto)
 
-    if not list_of_predictions:
-        logger.error("No se generó ninguna predicción. Retornando DataFrame vacío.")
-        df_final_votos = pd.DataFrame(columns=['numero_de_cliente', 'foto_mes', 'y_pred'])
-    else:
-        # Hacemos merge secuencial o join de todos los DataFrames en la lista
-        # Usamos el primer DF como base
-        df_final_votos = list_of_predictions[0]
+    # ===== 3) Consolidar votos y aplicar mayoría =====
+    if not lista_votos:
+        logger.error(f"[{experimento}] No se generaron predicciones. Devuelvo vacío.")
+        return pd.DataFrame(columns=['numero_de_cliente', 'foto_mes', 'y_pred'])
 
-        for df_pred in list_of_predictions[1:]:
-            # Unimos las columnas de votos (manteniendo 'numero_de_cliente' y 'foto_mes')
-            df_final_votos = df_final_votos.merge(
-                df_pred,
-                on=['numero_de_cliente', 'foto_mes'],
-                how='left'
-            )
+    df_final = lista_votos[0]
+    for df_pred in lista_votos[1:]:
+        df_final = df_final.merge(df_pred, on=['numero_de_cliente', 'foto_mes'], how='left')
 
-        # Identificar todas las columnas que contienen los votos (las que empiezan con 'voto_')
-        voto_cols = [col for col in df_final_votos.columns if col.startswith('voto_')]
+    voto_cols = [c for c in df_final.columns if c.startswith('voto_')]
+    if not voto_cols:
+        logger.error(f"[{experimento}] No hay columnas de voto. Devuelvo vacío.")
+        return pd.DataFrame(columns=['numero_de_cliente', 'foto_mes', 'y_pred'])
 
-        # Sumar los votos (cuántos modelos predijeron '1' para ese cliente)
-        df_final_votos['votos_positivos'] = df_final_votos[voto_cols].sum(axis=1)
+    # Evitar NaNs si algún merge dejó faltantes
+    df_final[voto_cols] = df_final[voto_cols].fillna(0).astype(int)
 
-        # Voto de Mayoría: La predicción final es '1' si la suma de votos > (número total de modelos / 2)
-        n_modelos = len(voto_cols)
-        umbral_mayoria = n_modelos / 2
+    n_modelos = len(voto_cols)
+    umbral_mayoria = n_modelos / 2.0  # mayoría estricta: > n/2
 
-        df_final_votos['y_pred_baja'] = np.where(
-            df_final_votos['votos_positivos'] > umbral_mayoria,
-            1,
-            0
-        )
+    df_final['votos_positivos'] = df_final[voto_cols].sum(axis=1)
+    df_final['y_pred'] = (df_final['votos_positivos'] > umbral_mayoria).astype(int)
 
-        # Limpieza: El resultado final debe ser solo con identificadores y la predicción final.
-        df_final_votos = df_final_votos[['numero_de_cliente', 'foto_mes', 'y_pred_baja']].drop_duplicates(
-            subset=['numero_de_cliente'])
-        df_final_votos.rename(columns={'y_pred_baja': 'y_pred'}, inplace=True)
+    # Output final
+    df_final_out = (
+        df_final[['numero_de_cliente', 'foto_mes', 'y_pred']]
+        .drop_duplicates(subset=['numero_de_cliente'], keep='last')
+        .reset_index(drop=True)
+    )
 
-        df_final_votos.to_csv(f'/home/joacosk/Documents/maestria/Q2/script_project/output/{experimento}.csv',index=False)
+    # Guardar CSV
+    out_dir = Path("/home/joacosk/Documents/maestria/Q2/script_project/output")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_csv = out_dir / f"{experimento}.csv"
+    df_final_out.to_csv(out_csv, index=False)
+    logger.info(f"[{experimento}] Ensemble guardado en {out_csv} (clientes={len(df_final_out)})")
 
-    logger.info(f"DataFrame final de votos de mayoría creado con {len(df_final_votos)} clientes únicos.")
+    return df_final_out

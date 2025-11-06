@@ -25,7 +25,7 @@ try:
     # Generales
     CREAR_NUEVA_BASE = _cfgGeneral.get("NUEVA_BASE", False)
     DB_PATH = _cfgGeneral.get("DB_PATH", "data/churn.duckdb")
-    CSV_COMP = _cfgGeneral.get("CSV_COMP", "data/competencia_01_crudo.csv")
+    #CSV_COMP = _cfgGeneral.get("CSV_COMP", "data/competencia_01_crudo.csv")
     STUDY_NAME = _cfgGeneral.get("STUDY_NAME", "default_study")
     STORAGE = _cfgGeneral.get("STORAGE", None)
     N_TRIALS = int(_cfgGeneral.get("N_TRIALS", 50))
@@ -47,16 +47,16 @@ try:
     DB_MODELS_TRAIN_PATH = _cfgGeneral.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
 
     START_POINT = _cfgGeneral.get("START_POINT", "FEATURES")
+    DATA_PATH = _cfgGeneral.get("DATA_PATH", "data/competencia_01.csv")
 
     # Competencia 01
-    DATA_PATH = _cfg.get("DATA_PATH", "data/competencia_01.csv")
-    SEEDS = _cfg.get("SEEDS")
-    MES_TRAIN = _cfg.get("MONTH_TRAIN", [202102])
-    MES_VALIDACION = _cfg.get("MONTH_VALIDATION", [202103])
-    MES_TEST = _cfg.get("MONTH_TEST", [202104])
-    MES_PRED = _cfg.get("MONTH_PRED", [202105])
-    TARGET = _cfg.get("TARGET", "target")
-    ID_COL = _cfg.get("ID_COL", "id")
+    SEEDS = _cfg2.get("SEEDS")
+    MES_TRAIN = _cfg2.get("MONTH_TRAIN", [202102])
+    MES_VALIDACION = _cfg2.get("MONTH_VALIDATION", [202103])
+    MES_TEST = _cfg2.get("MONTH_TEST", [202104])
+    MES_PRED = _cfg2.get("MONTH_PRED", [202105])
+    TARGET = _cfg2.get("TARGET", "target")
+    ID_COL = _cfg2.get("ID_COL", "id")
 
     GANANCIA_ACIERTO = _cfg.get("GANANCIA_ACIERTO", None)
     COSTO_ESTIMULO = _cfg.get("COSTO_ESTIMULO", None)
@@ -67,6 +67,7 @@ try:
     BQ_DATASET = _cfg2.get("BQ_DATASET", None)
     BQ_TABLE = _cfg2.get("BQ_TABLE", None)
     BQ_TABLE_TARGETS = _cfg2.get("BQ_TABLE_TARGETS", None)
+
 
 
 except Exception as e:

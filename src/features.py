@@ -8,7 +8,16 @@ from logging import getLogger
 from typing import List, Tuple
 import polars as pl
 
+from google.cloud import bigquery
+
+
 logger = getLogger(__name__)
+
+
+
+
+
+
 
 def get_numeric_columns_pl(
     df: pl.DataFrame,

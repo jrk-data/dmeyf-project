@@ -13,8 +13,9 @@ jupyterlab
 jupyter
 plotly
 umap-learn
-pyarrow
 fastparquet
 
 google-cloud-bigquery
 google-cloud-storage
+google-cloud-bigquery-storage
+pyarrow

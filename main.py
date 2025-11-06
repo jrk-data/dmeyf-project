@@ -3,10 +3,36 @@ import os, sys, logging
 from datetime import datetime
 from pathlib import Path
 
+
+######################################################################
+
+from src.loader import (
+                        select_c02_polars, create_bq_table_c02,create_targets_c02,
+                        select_data_c02, tabla_productos_por_cliente)
+from src.features import (get_numeric_columns_pl,
+                          feature_engineering_lag,
+                          feature_engineering_delta)
+from src.optimization import (binary_target,
+                              split_train_data,
+                              run_study
+                              )
+from src.config import (CREAR_NUEVA_BASE, DATA_PATH, LOGS_PATH
+                        , SEEDS, MES_TRAIN,
+                        MES_VALIDACION, MES_TEST,
+                        GANANCIA_ACIERTO, COSTO_ESTIMULO, DB_PATH,
+                        STUDY_NAME_OPTUNA, STORAGE_OPTUNA, OPTIMIZAR
+                        , DIR_MODELS, MES_PRED, START_POINT,
+                        # Variables BigQuery
+                        BQ_PROJECT, BQ_DATASET, BQ_TABLE, BQ_TABLE_TARGETS)
+
+from src.train_test import (train_model
+                            , calculo_curvas_ganancia
+                            ,pred_ensamble_modelos)
+
 # ---- INSTANCIO LOS LOGS PARA REGISTRAR CUALQUIER ERROR DE IMPORT
 
 # Elegí un path ABSOLUTO para que no dependa del cwd
-LOGS_PATH = Path("/home/joaquinrk_data/dmeyf-project/logs")
+LOGS_PATH = Path(LOGS_PATH)
 LOGS_PATH.mkdir(parents=True, exist_ok=True)
 
 name_log = f"log_{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
@@ -20,28 +46,6 @@ stream_handler.setFormatter(logging.Formatter(fmt))
 logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler], force=True)
 logger = logging.getLogger(__name__)
 logger.info("Logger inicializado")
-
-
-######################################################################
-
-from src.loader import create_dataset_c01, select_c01
-from src.features import (get_numeric_columns_pl,
-                          feature_engineering_lag,
-                          feature_engineering_delta)
-from src.optimization import (binary_target,
-                              split_train_data,
-                              run_study
-                              )
-from src.config import (CREAR_NUEVA_BASE, DATA_PATH, LOGS_PATH
-                        , SEEDS, MES_TRAIN,
-                        MES_VALIDACION, MES_TEST,
-                        GANANCIA_ACIERTO, COSTO_ESTIMULO, DB_PATH,
-                        STUDY_NAME_OPTUNA, STORAGE_OPTUNA, OPTIMIZAR
-                        , DIR_MODELS, MES_PRED, START_POINT)
-
-from src.train_test import (train_model
-                            , calculo_curvas_ganancia
-                            ,pred_ensamble_modelos)
 
 
 # FLAG para crear BBDD de cero o no
@@ -75,12 +79,31 @@ def main():
         if START_POINT == 'DATA':
             logger.info("Creando nueva base de datos...")
             # NOTA: Usamos CREAR_NUEVA_BASE aquí si es necesario, aunque START_POINT es más limpio.
-            create_dataset_c01(DB_PATH)
+
+            # Selecciono datos crudos
+            data = select_c02_polars(DATA_PATH)
+
+            # Creo tabla en BQ a partir de datos Crudos
+            create_bq_table_c02(data, BQ_PROJECT, BQ_DATASET , BQ_TABLE)
+
+            # Creo targets
+            create_targets_c02(BQ_PROJECT, BQ_DATASET , BQ_TABLE, BQ_TABLE_TARGETS)
+
+            # Creo q_productos_cliente_mes
+            tabla_productos_por_cliente(BQ_PROJECT, BQ_DATASET , BQ_TABLE, BQ_TABLE_TARGETS)
+
+        # Meses a usar
+        meses = MES_TRAIN + MES_TEST + MES_PRED
+
+        # Selecciono los datos de los meses que se van a trabajar
+        data = select_data_c02(BQ_PROJECT, BQ_DATASET , BQ_TABLE, meses)
+
+
 
         logger.info("Usando base de datos existente...")
         # Cargo dataset base
         logger.info("Cargando dataset comision_01...")
-        data = select_c01(DB_PATH)  # <-- 'data' es necesario para los siguientes pasos
+        #data = select_c01(DB_PATH)  # <-- 'data' es necesario para los siguientes pasos
 
         # Binarizar target
         logger.info("Binarizando target...")
@@ -104,68 +127,114 @@ def main():
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"#### FIN FEATURE ENGINEERING ###")
 
-        # El resto del pipeline necesita que los datos estén spliteados
-        response_split = split_train_data(data, MES_TRAIN, MES_TEST, MES_PRED)
-
-        X_train = response_split["X_train_pl"].to_pandas()
-        y_train_b2 = response_split["y_train_binaria2"]
-        w_train = response_split["w_train"]
-        y_test_class = response_split["y_test_class"]
-        X_test = response_split["X_test_pl"].to_pandas()  # Convertido a Pandas
-
-        X_pred = response_split["X_pred_pl"].to_pandas()
         # ---------------------------------------------------------------------------------
-        # 3. OPTIMIZACIÓN HIPERPARÁMETROS (START_POINT == 'OPTUNA')
+        # 2.5. SPLITS POR MES
         # ---------------------------------------------------------------------------------
-        study = None
+        meses_train_separados = {}
+        for mes_train in MES_TRAIN:
+            resp = split_train_data(data, mes_train, MES_TEST, MES_PRED)
+            meses_train_separados[mes_train] = {
+                'X_train': resp["X_train_pl"].to_pandas(),
+                'y_train_b2': resp["y_train_binaria2"],
+                'w_train': resp["w_train"],
+                'y_test_class': resp["y_test_class"],
+                'X_test': resp["X_test_pl"].to_pandas(),
+                'X_pred': resp["X_pred_pl"].to_pandas(),
+            }
+
+        # ---------------------------------------------------------------------------------
+        # 3. OPTIMIZACIÓN HIPERPARÁMETROS (por mes)
+        # ---------------------------------------------------------------------------------
         storage_optuna = STORAGE_OPTUNA
-        study_name_optuna = STUDY_NAME_OPTUNA
+        base_study_name = STUDY_NAME_OPTUNA
+        studies_by_month = {}
 
         if START_POINT in ['OPTUNA', 'TRAIN', 'PREDICT']:
-            logger.info(f"Seteando path de BBDD Optuna: {storage_optuna} - {study_name_optuna}")
-            logger.info("Iniciando estudio...")
+            logger.info(f"Seteando path de BBDD Optuna: {storage_optuna} - base_name={base_study_name}")
+            logger.info("Iniciando estudios por mes...")
 
-            # 'run_study' maneja la carga o creación del estudio Optuna
-            study = run_study(X_train,
-                              y_train_b2
-                              , SEEDS[0]
-                              , w_train
-                              , None
-                              , storage_optuna
-                              , study_name_optuna
-                              , optimizar=OPTIMIZAR)
-            logger.info("#### FIN OPTIMIZACIÓN HIPERPARAMETROS ####")
+            for mes, bundle in meses_train_separados.items():
+                study_name = f"{base_study_name}_{mes}"
+                study = run_study(
+                    X_train=bundle['X_train'],
+                    y_train=bundle['y_train_b2'],
+                    SEED=SEEDS[0],
+                    w_train=bundle['w_train'],
+                    matching_categorical_features=None,
+                    storage_optuna=storage_optuna,
+                    study_name_optuna=study_name,
+                    optimizar=OPTIMIZAR,  # True: optimiza; False: sólo carga
+                )
+                studies_by_month[mes] = study
+                logger.info(f"#### FIN OPTIMIZACIÓN HIPERPARÁMETROS MES {mes} ####")
 
         # ---------------------------------------------------------------------------------
-        # 4. ENTRENAMIENTO Y CÁLCULO CURVAS (START_POINT == 'TRAIN')
+        # 4. ENTRENAMIENTO Y CÁLCULO DE CURVAS (por mes)
         # ---------------------------------------------------------------------------------
         top_k_model = 5
+        models_root = DIR_MODELS  # raíz de modelos en config
 
         if START_POINT in ['TRAIN', 'PREDICT']:
+            logger.info("Entrenando modelos Top-K y calculando curvas por mes...")
 
-            # Si no pasamos por OPTUNA, necesitamos el objeto study cargado
-            if START_POINT == 'TRAIN' and study is None:
-                logger.info("Cargando estudio Optuna existente para entrenamiento...")
-                # Aquí deberías tener una función para CARGAR el study si OPTIMIZAR es False
-                # OJO: La función run_study ya maneja la carga si OPTIMIZAR=False
-                study = run_study(X_train, y_train_b2, SEEDS[0], w_train, None, storage_optuna, study_name_optuna,
-                                  optimizar=False)
+            for mes, bundle in meses_train_separados.items():
+                # asegurar tener el study (si no corriste OPTUNA ahora, se carga desde storage)
+                study_name = f"{base_study_name}_{mes}"
+                study = studies_by_month.get(mes)
+                if study is None:
+                    study = run_study(
+                        X_train=bundle['X_train'],
+                        y_train=bundle['y_train_b2'],
+                        SEED=SEEDS[0],
+                        w_train=bundle['w_train'],
+                        matching_categorical_features=None,
+                        storage_optuna=storage_optuna,
+                        study_name_optuna=study_name,
+                        optimizar=False,  # sólo cargar resultados
+                    )
+                    studies_by_month[mes] = study
 
-            logger.info("Entrenando modelos Top-K...")
-            train_model(study, X_train, y_train_b2, w_train, top_k_model)
+                # ---------- ENTRENAR Top-K por mes ----------
+                logger.info(f"[{study_name}] Entrenando Top-{top_k_model}...")
+                meta = train_model(
+                    study=study,
+                    X_train=bundle['X_train'],
+                    y_train=bundle['y_train_b2'],
+                    weights=bundle['w_train'],
+                    k=top_k_model,
+                    experimento=study_name,    # <- NOMBRE del experimento (por mes)
+                    save_root=models_root,     # <- raíz donde guardar modelos
+                    seeds=SEEDS,               # <- semillas a entrenar
+                    logger=logger,
+                )
 
-            logger.info("Calculando curvas de ganancia...")
-            y_predicciones, curvas, mejores_cortes_normalizado = calculo_curvas_ganancia(X_test, y_test_class,
-                                                                                         DIR_MODELS, study_name_optuna)
-            print(mejores_cortes_normalizado)
+                # ---------- CURVAS por mes ----------
+                logger.info(f"[{study_name}] Calculando curvas de ganancia...")
+                models_dir = str(Path(models_root) / study_name)  # carpeta del estudio/mes
+                y_predicciones, curvas, mejores_cortes_normalizado = calculo_curvas_ganancia(
+                    Xif=bundle['X_test'],
+                    y_test_class=bundle['y_test_class'],
+                    dir_model_opt=models_dir,  # 👈 sin concatenar nada adentro
+                    resumen_csv_name="resumen_ganancias.csv",
+                )
+                logger.info(f"[{study_name}] mejores cortes: {mejores_cortes_normalizado}")
 
         # ---------------------------------------------------------------------------------
-        # 5. PREDICCIÓN FINAL/ENSEMBLE (START_POINT == 'PREDICT')
+        # 5. PREDICCIÓN FINAL / ENSEMBLE (elige el mes de referencia)
         # ---------------------------------------------------------------------------------
         if START_POINT == 'PREDICT':
-            logger.info("Realizando predicción final (Ensemble)...")
-            # El número 6 es el parámetro 'k' que tenías en main.py para pred_ensamble_modelos
-            pred_ensamble_modelos(X_pred, DIR_MODELS, study_name_optuna, 6)
+            # estrategia simple: usar el último mes de MES_TRAIN (o elegí el que quieras)
+            mes_ref = max(meses_train_separados.keys())  # o el mes que quieras usar. Todos tienen el mismo X_pred
+            experimento = f"{STUDY_NAME_OPTUNA}_{mes_ref}"
+            models_dir = Path(DIR_MODELS) / experimento
+
+            df_pred = pred_ensamble_modelos(
+                Xif=meses_train_separados[mes_ref]['X_pred'],
+                dir_model_opt=str(models_dir),
+                experimento=experimento,
+                k=6
+            )
+
     except  Exception as e:
         logger.error(f'Se cortó ejecución por un error:\n {e}')
 
