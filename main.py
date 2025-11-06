@@ -119,11 +119,11 @@ def main():
             data = feature_engineering_lag(
                 data,
                 numeric_cols,
-                cant_lag=1,
+                cant_lag=3,
             )
 
             logger.info("Creando Deltas...")
-            data = feature_engineering_delta(data, numeric_cols, 1)
+            data = feature_engineering_delta(data, numeric_cols, 3)
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"#### FIN FEATURE ENGINEERING ###")
 

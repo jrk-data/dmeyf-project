@@ -2,7 +2,7 @@
 
 # CONFIG Local
 
-STUDY_NAME_OPTUNA: "ensamble_meses_202012_202103_1"
+STUDY_NAME_OPTUNA: "ensamble_lgb_meses_202005_202103_CV"
 STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
 DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
 DB_PATH: "data/churn.duckdb"
@@ -43,7 +43,7 @@ EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stoppi
 # ------------------------------------------------------------------
 # NUEVA VARIABLE PARA CONTROL DE FLUJO
 # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-START_POINT: "FEATURES"
+START_POINT: "PREDICT"
 # ------------------------------------------------------------------
 
 
@@ -72,7 +72,7 @@ competencia02:
   BQ_TABLE_FEATURES: "features"
 
   SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
-  MONTH_TRAIN: [ 202012, 202101,202102,202103 ]
+  MONTH_TRAIN: [202007, 202008, 202009, 202010, 202011, 202012, 202101,202102,202103 ]
   MONTH_VALIDATION: [ 202103 ]
   MONTH_TEST: [ 202104 ]
   MONTH_PRED: [ 202106 ]
