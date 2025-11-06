@@ -5,13 +5,13 @@
 STUDY_NAME_OPTUNA: "ensamble_lgb_meses_202005_202103_CV"
 
 
-STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
-DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
-DB_PATH: "data/churn.duckdb"
-DATA_PATH: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
-DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
-CSV_COMP: "data/competencia_01_crudo.csv"
-LOGS_PATH: "logs/"
+#STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
+#DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
+#DB_PATH: "data/churn.duckdb"
+#DATA_PATH: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
+#DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
+#CSV_COMP: "data/competencia_01_crudo.csv"
+#LOGS_PATH: "logs/"
 
 
 NUEVA_BASE: False
@@ -23,15 +23,15 @@ BQ_TABLE   : "c02"
 BQ_TABLE_TARGETS : 'targets'
 
 # Config VM
-#STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
-#DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"
-#DB_PATH: "/home/joaquinrk_data/buckets/b1/datasets/churn.duckdb"
-#DATA_PATH: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
-#DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/datasets/models_train_test.duckdb"
-#CSV_COMP: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
-#LOGS_PATH: "/home/joaquinrk_data/dmeyf-project/logs"
+STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
+DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"
+DB_PATH: "/home/joaquinrk_data/buckets/b1/datasets/churn.duckdb"
+DATA_PATH: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
+DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/datasets/models_train_test.duckdb"
+CSV_COMP: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
+LOGS_PATH: "/home/joaquinrk_data/dmeyf-project/logs"
 # NOMBRE EXPERIMENTO
-cSTUDY_NAME_OPTUNA: "lgb_optimization_exp1_vm"
+#STUDY_NAME_OPTUNA: "lgb_optimization_exp1_vm"
 
 
 CSV_COMPETENCIA_2: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
