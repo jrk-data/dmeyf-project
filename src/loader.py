@@ -321,21 +321,18 @@ def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
         # Uso Storage API para traer Arrow más rápido
         arrow_table = job.result().to_arrow(bqstorage_client=bqstorage_client)
 
-        ######### Contención de features que se transforman de  string a float ###############
-        # Definí un schema explícito
-        schema = pa.schema([
-            ("tmobile_app", pa.float64()),
-            ("cmobile_app_trx", pa.float64()),
-            ("Master_Finiciomora", pa.float64()),
-            ("Visa_Finiciomora", pa.float64()),
-        ])
-
-        # Re-casteá el Arrow Table antes de pasarlo a Polars
-        arrow_table = arrow_table.cast(schema, safe=False)
-        ######### Contención de features que se transforman de  string a float ##########
 
         # Convertir ArrowTable → Polars DataFrame
         df_pl = pl.from_arrow(arrow_table)
+
+        ######### Contención de features que se transforman de  string a float ###############
+        df_pl = df_pl.with_columns([
+            pl.col("tmobile_app").cast(pl.Float64, strict=False),
+            pl.col("cmobile_app_trx").cast(pl.Float64, strict=False),
+            pl.col("Master_Finiciomora").cast(pl.Float64, strict=False),
+            pl.col("Visa_Finiciomora").cast(pl.Float64, strict=False),
+        ])
+        ######### Contención de features que se transforman de  string a float ##########
 
         return df_pl
 
