@@ -337,34 +337,6 @@ def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
         # Convertir ArrowTable → Polars DataFrame
         df_pl = pl.from_arrow(arrow_table)
 
-        ########### CODIGO DEBUGEO TIPO DE DATO ########################
-        # LOGS PARA VER TIPOS DE DATOS
-        type_counts = {}
-        for dtype in df_pl.schema.values():
-            dtype_str = str(dtype)
-            type_counts[dtype_str] = type_counts.get(dtype_str, 0) + 1
-
-        logger.info(f"Conteo de tipos Polars: {type_counts}")
-
-        str_cols = [c for c, t in df_pl.schema.items() if str(t) in ("Utf8", "String")]
-        logger.info(f"Columnas String: {str_cols}")
-
-        # ver nulos y ejemplos rápidos
-        perfil_str = df_pl.select(
-            *[pl.struct(
-                col=pl.lit(c),
-                n_null=pl.col(c).null_count(),
-                n_unique=pl.col(c).n_unique(),
-                sample=pl.col(c).drop_nulls().head(5)
-            ) for c in str_cols]
-        ).to_dicts()
-        logger.info(f"Perfil columnas String: {perfil_str}")
-
-
-
-
-    ############## fin debuggeo #######################################
-
         return df_pl
 
     except Exception as e:
