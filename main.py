@@ -23,7 +23,7 @@ from src.config import (CREAR_NUEVA_BASE, DATA_PATH, LOGS_PATH
                         STUDY_NAME_OPTUNA, STORAGE_OPTUNA, OPTIMIZAR
                         , DIR_MODELS, MES_PRED, START_POINT, RUN_CALC_CURVAS,
                         # Variables BigQuery
-                        BQ_PROJECT, BQ_DATASET, BQ_TABLE, BQ_TABLE_TARGETS)
+                        BQ_PROJECT, BQ_DATASET, BQ_TABLE, BQ_TABLE_TARGETS, TOP_K_MODEL, RUN_OPTIMIZATION)
 
 from src.train_test import (train_model
                             , calculo_curvas_ganancia
@@ -156,30 +156,30 @@ def main():
         storage_optuna = STORAGE_OPTUNA
         base_study_name = STUDY_NAME_OPTUNA
         studies_by_month = {}
+        if RUN_OPTIMIZATION:
+            if START_POINT in ['OPTUNA', 'TRAIN', 'PREDICT']:
+                logger.info(f"Seteando path de BBDD Optuna: {storage_optuna} - base_name={base_study_name}")
+                logger.info("Iniciando estudios por mes...")
 
-        if START_POINT in ['OPTUNA', 'TRAIN', 'PREDICT']:
-            logger.info(f"Seteando path de BBDD Optuna: {storage_optuna} - base_name={base_study_name}")
-            logger.info("Iniciando estudios por mes...")
-
-            for mes, bundle in meses_train_separados.items():
-                study_name = f"{base_study_name}_{mes}"
-                study = run_study(
-                    X_train=bundle['X_train'],
-                    y_train=bundle['y_train_b2'],
-                    SEED=SEEDS[0],
-                    w_train=bundle['w_train'],
-                    matching_categorical_features=None,
-                    storage_optuna=storage_optuna,
-                    study_name_optuna=study_name,
-                    optimizar=OPTIMIZAR,  # True: optimiza; False: sólo carga
-                )
-                studies_by_month[mes] = study
-                logger.info(f"#### FIN OPTIMIZACIÓN HIPERPARÁMETROS MES {mes} ####")
+                for mes, bundle in meses_train_separados.items():
+                    study_name = f"{base_study_name}_{mes}"
+                    study = run_study(
+                        X_train=bundle['X_train'],
+                        y_train=bundle['y_train_b2'],
+                        SEED=SEEDS[0],
+                        w_train=bundle['w_train'],
+                        matching_categorical_features=None,
+                        storage_optuna=storage_optuna,
+                        study_name_optuna=study_name,
+                        optimizar=OPTIMIZAR,  # True: optimiza; False: sólo carga
+                    )
+                    studies_by_month[mes] = study
+                    logger.info(f"#### FIN OPTIMIZACIÓN HIPERPARÁMETROS MES {mes} ####")
 
         # ---------------------------------------------------------------------------------
         # 4. ENTRENAMIENTO Y CÁLCULO DE CURVAS (por mes)
         # ---------------------------------------------------------------------------------
-        top_k_model = 5
+        top_k_model = TOP_K_MODEL # El top de k de modelos que vamos a elegir
         models_root = DIR_MODELS  # raíz de modelos en config
 
         if START_POINT in ['TRAIN', 'PREDICT']:

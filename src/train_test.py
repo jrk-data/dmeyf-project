@@ -419,9 +419,9 @@ def calculo_curvas_ganancia(Xif,
 def pred_ensamble_modelos(
     Xif: pd.DataFrame,
     dir_model_opt: str | Path,   # p.ej. ".../src/models/STUDY_NAME_OPTUNA_202003"
-    resumen_csv_name: str = "resumen_ganancias_modelos.csv",
     experimento: str,            # p.ej. "STUDY_NAME_OPTUNA_202003"
-    k: int
+    k: int,
+    resumen_csv_name: str = "resumen_ganancias_modelos.csv"
 ) -> pd.DataFrame:
     """
     Ensambla las predicciones de los top-k modelos (por 'ganancia_max')

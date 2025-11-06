@@ -37,13 +37,13 @@ try:
     STORAGE_OPTUNA = _cfgGeneral.get("STORAGE_OPTUNA", None)
     STUDY_NAME_OPTUNA = _cfgGeneral.get("STUDY_NAME_OPTUNA",None)
 
+
+    ###### FLAGS
     # Busca la variable optimizar, por defecto queda en False
     OPTIMIZAR = _cfgGeneral.get("OPTIMIZAR", False)
 
-    # ##### FLAGS
     RUN_CALC_CURVAS = _cfgGeneral.get("RUN_CALC_CURVAS", False)
-
-
+    RUN_OPTIMIZATION = _cfgGeneral.get("RUN_OPTIMIZATION", False)
     # PATH MODELO
     DIR_MODELS = _cfgGeneral.get("DIR_MODELS", ".src/models/default/")
 
