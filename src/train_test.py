@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 # 2. Silencia el logger específico de Matplotlib para el gestor de fuentes
 logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
+# -- Funcion Helper que sirve para definir nombre de tabla de ganancias
+
+def _resumen_table_name(resumen_csv_name: str) -> str:
+    return f"{Path(resumen_csv_name).stem}_test"
 
 
 def train_model(study, X_train, y_train, weights, k,
@@ -354,7 +358,7 @@ def calculo_curvas_ganancia(Xif,
             # 1. Crear Vista Temporal (Asegura que DuckDB vea el DF 'nuevos')
             con.execute("CREATE OR REPLACE TEMP VIEW nuevos_data AS SELECT * FROM nuevos;")
 
-            TABLE_NAME = f"{resumen_path.stem}_test"  # usa stem para evitar '.csv' en el nombre
+            TABLE_NAME = _resumen_table_name(resumen_csv_name)  # usa stem para evitar '.csv' en el nombre
 
             # 2. Asegurar la Tabla y la PK compuesta (experimento, modelo)
             try:
@@ -415,6 +419,7 @@ def calculo_curvas_ganancia(Xif,
 def pred_ensamble_modelos(
     Xif: pd.DataFrame,
     dir_model_opt: str | Path,   # p.ej. ".../src/models/STUDY_NAME_OPTUNA_202003"
+    resumen_csv_name: str = "resumen_ganancias_modelos.csv",
     experimento: str,            # p.ej. "STUDY_NAME_OPTUNA_202003"
     k: int
 ) -> pd.DataFrame:
@@ -428,10 +433,7 @@ def pred_ensamble_modelos(
 
     # ===== 1) Top-K modelos desde DuckDB, filtrando por experimento =====
     with duckdb.connect(str(DB_MODELS_TRAIN_PATH)) as con:
-        # Ojo: esta tabla es la que definiste en calculo_curvas_ganancia()
-        # TABLE_NAME = f"{resumen_path.stem}_test"  (por defecto: "resumen_ganancias_modelos_test")
-        # Si usaste el nombre por defecto:
-        table_resumen = "resumen_ganancias_modelos_test"
+        table_resumen = _resumen_table_name(resumen_csv_name)
         q = f"""
             SELECT modelo, thr_opt, ganancia_max
             FROM {table_resumen}

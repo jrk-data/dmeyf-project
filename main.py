@@ -21,13 +21,14 @@ from src.config import (CREAR_NUEVA_BASE, DATA_PATH, LOGS_PATH
                         MES_VALIDACION, MES_TEST,
                         GANANCIA_ACIERTO, COSTO_ESTIMULO, DB_PATH,
                         STUDY_NAME_OPTUNA, STORAGE_OPTUNA, OPTIMIZAR
-                        , DIR_MODELS, MES_PRED, START_POINT,
+                        , DIR_MODELS, MES_PRED, START_POINT, RUN_CALC_CURVAS,
                         # Variables BigQuery
                         BQ_PROJECT, BQ_DATASET, BQ_TABLE, BQ_TABLE_TARGETS)
 
 from src.train_test import (train_model
                             , calculo_curvas_ganancia
                             ,pred_ensamble_modelos)
+
 
 # ---- INSTANCIO LOS LOGS PARA REGISTRAR CUALQUIER ERROR DE IMPORT
 
@@ -66,6 +67,13 @@ logger.info(f"MES_VALIDACION: {MES_VALIDACION}")
 logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"GANANCIA_ACIERTO: {GANANCIA_ACIERTO}")
 logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
+
+
+# === FLAGS DE CONTROL ===
+RUN_CALC_CURVAS = RUN_CALC_CURVAS    # ⬅️ poner False para no recalcular curvas
+# =========================
+
+
 
 
 def main():
@@ -177,47 +185,48 @@ def main():
         if START_POINT in ['TRAIN', 'PREDICT']:
             logger.info("Entrenando modelos Top-K y calculando curvas por mes...")
 
-            for mes, bundle in meses_train_separados.items():
-                # asegurar tener el study (si no corriste OPTUNA ahora, se carga desde storage)
-                study_name = f"{base_study_name}_{mes}"
-                study = studies_by_month.get(mes)
-                if study is None:
-                    study = run_study(
+            if RUN_CALC_CURVAS:
+                for mes, bundle in meses_train_separados.items():
+                    # asegurar tener el study (si no corriste OPTUNA ahora, se carga desde storage)
+                    study_name = f"{base_study_name}_{mes}"
+                    study = studies_by_month.get(mes)
+                    if study is None:
+                        study = run_study(
+                            X_train=bundle['X_train'],
+                            y_train=bundle['y_train_b2'],
+                            SEED=SEEDS[0],
+                            w_train=bundle['w_train'],
+                            matching_categorical_features=None,
+                            storage_optuna=storage_optuna,
+                            study_name_optuna=study_name,
+                            optimizar=False,  # sólo cargar resultados
+                        )
+                        studies_by_month[mes] = study
+
+                    # ---------- ENTRENAR Top-K por mes ----------
+                    logger.info(f"[{study_name}] Entrenando Top-{top_k_model}...")
+                    meta = train_model(
+                        study=study,
                         X_train=bundle['X_train'],
                         y_train=bundle['y_train_b2'],
-                        SEED=SEEDS[0],
-                        w_train=bundle['w_train'],
-                        matching_categorical_features=None,
-                        storage_optuna=storage_optuna,
-                        study_name_optuna=study_name,
-                        optimizar=False,  # sólo cargar resultados
+                        weights=bundle['w_train'],
+                        k=top_k_model,
+                        experimento=study_name,    # <- NOMBRE del experimento (por mes)
+                        save_root=models_root,     # <- raíz donde guardar modelos
+                        seeds=SEEDS,               # <- semillas a entrenar
+                        logger=logger,
                     )
-                    studies_by_month[mes] = study
 
-                # ---------- ENTRENAR Top-K por mes ----------
-                logger.info(f"[{study_name}] Entrenando Top-{top_k_model}...")
-                meta = train_model(
-                    study=study,
-                    X_train=bundle['X_train'],
-                    y_train=bundle['y_train_b2'],
-                    weights=bundle['w_train'],
-                    k=top_k_model,
-                    experimento=study_name,    # <- NOMBRE del experimento (por mes)
-                    save_root=models_root,     # <- raíz donde guardar modelos
-                    seeds=SEEDS,               # <- semillas a entrenar
-                    logger=logger,
-                )
-
-                # ---------- CURVAS por mes ----------
-                logger.info(f"[{study_name}] Calculando curvas de ganancia...")
-                models_dir = str(Path(models_root) / study_name)  # carpeta del estudio/mes
-                y_predicciones, curvas, mejores_cortes_normalizado = calculo_curvas_ganancia(
-                    Xif=bundle['X_test'],
-                    y_test_class=bundle['y_test_class'],
-                    dir_model_opt=models_dir,  # 👈 sin concatenar nada adentro
-                    resumen_csv_name="resumen_ganancias.csv",
-                )
-                logger.info(f"[{study_name}] mejores cortes: {mejores_cortes_normalizado}")
+                    # ---------- CURVAS por mes ----------
+                    logger.info(f"[{study_name}] Calculando curvas de ganancia...")
+                    models_dir = str(Path(models_root) / study_name)  # carpeta del estudio/mes
+                    y_predicciones, curvas, mejores_cortes_normalizado = calculo_curvas_ganancia(
+                        Xif=bundle['X_test'],
+                        y_test_class=bundle['y_test_class'],
+                        dir_model_opt=models_dir,  # 👈 sin concatenar nada adentro
+                        resumen_csv_name="resumen_ganancias.csv",
+                    )
+                    logger.info(f"[{study_name}] mejores cortes: {mejores_cortes_normalizado}")
 
         # ---------------------------------------------------------------------------------
         # 5. PREDICCIÓN FINAL / ENSEMBLE (elige el mes de referencia)
@@ -231,6 +240,7 @@ def main():
             df_pred = pred_ensamble_modelos(
                 Xif=meses_train_separados[mes_ref]['X_pred'],
                 dir_model_opt=str(models_dir),
+                resumen_csv_name="resumen_ganancias.csv",
                 experimento=experimento,
                 k=6
             )

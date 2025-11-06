@@ -40,6 +40,9 @@ try:
     # Busca la variable optimizar, por defecto queda en False
     OPTIMIZAR = _cfgGeneral.get("OPTIMIZAR", False)
 
+    # ##### FLAGS
+    RUN_CALC_CURVAS = _cfgGeneral.get("RUN_CALC_CURVAS", False)
+
 
     # PATH MODELO
     DIR_MODELS = _cfgGeneral.get("DIR_MODELS", ".src/models/default/")
