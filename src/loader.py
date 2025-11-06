@@ -320,6 +320,19 @@ def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
 
         # Convertir ArrowTable → Polars DataFrame
         df_pl = pl.from_arrow(arrow_table)
+
+        # LOGS PARA VER TIPOS DE DATOS
+        type_counts = {}
+        for dtype in df_pl.schema.values():
+            dtype_str = str(dtype)
+            type_counts[dtype_str] = type_counts.get(dtype_str, 0) + 1
+
+        logger.info(f"Conteo de tipos Polars: {type_counts}")
+
+        # 🔎 Si querés ver ejemplos de columnas por tipo
+        logger.debug(f"Tipos detectados (detalle): {df_pl.schema}")
+
+
         return df_pl
 
     except Exception as e:
