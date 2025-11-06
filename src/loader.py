@@ -8,6 +8,9 @@ from pathlib import Path
 import logging
 from google.cloud import bigquery, bigquery_storage # storage para que lea mas rápido
 import polars as pl
+import pyarrow as pa
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -318,9 +321,23 @@ def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
         # Uso Storage API para traer Arrow más rápido
         arrow_table = job.result().to_arrow(bqstorage_client=bqstorage_client)
 
+        ######### Contención de features que se transforman de  string a float ###############
+        # Definí un schema explícito
+        schema = pa.schema([
+            ("tmobile_app", pa.float64()),
+            ("cmobile_app_trx", pa.float64()),
+            ("Master_Finiciomora", pa.float64()),
+            ("Visa_Finiciomora", pa.float64()),
+        ])
+
+        # Re-casteá el Arrow Table antes de pasarlo a Polars
+        arrow_table = arrow_table.cast(schema, safe=False)
+        ######### Contención de features que se transforman de  string a float ##########
+
         # Convertir ArrowTable → Polars DataFrame
         df_pl = pl.from_arrow(arrow_table)
 
+        ########### CODIGO DEBUGEO TIPO DE DATO ########################
         # LOGS PARA VER TIPOS DE DATOS
         type_counts = {}
         for dtype in df_pl.schema.values():
@@ -329,9 +346,24 @@ def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
 
         logger.info(f"Conteo de tipos Polars: {type_counts}")
 
-        # 🔎 Si querés ver ejemplos de columnas por tipo
-        logger.debug(f"Tipos detectados (detalle): {df_pl.schema}")
+        str_cols = [c for c, t in df_pl.schema.items() if str(t) in ("Utf8", "String")]
+        logger.info(f"Columnas String: {str_cols}")
 
+        # ver nulos y ejemplos rápidos
+        perfil_str = df_pl.select(
+            *[pl.struct(
+                col=pl.lit(c),
+                n_null=pl.col(c).null_count(),
+                n_unique=pl.col(c).n_unique(),
+                sample=pl.col(c).drop_nulls().head(5)
+            ) for c in str_cols]
+        ).to_dicts()
+        logger.info(f"Perfil columnas String: {perfil_str}")
+
+
+
+
+    ############## fin debuggeo #######################################
 
         return df_pl
 
