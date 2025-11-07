@@ -25,7 +25,6 @@ try:
     # Generales
     CREAR_NUEVA_BASE = _cfgGeneral.get("NUEVA_BASE", False)
     DB_PATH = _cfgGeneral.get("DB_PATH", "data/churn.duckdb")
-    #CSV_COMP = _cfgGeneral.get("CSV_COMP", "data/competencia_01_crudo.csv")
     STUDY_NAME = _cfgGeneral.get("STUDY_NAME", "default_study")
     STORAGE = _cfgGeneral.get("STORAGE", None)
     N_TRIALS = int(_cfgGeneral.get("N_TRIALS", 50))
@@ -37,13 +36,14 @@ try:
     STORAGE_OPTUNA = _cfgGeneral.get("STORAGE_OPTUNA", None)
     STUDY_NAME_OPTUNA = _cfgGeneral.get("STUDY_NAME_OPTUNA",None)
 
+    TOP_K_MODELS = _cfgGeneral.get("TOP_K_MODELS", 5)
 
     ###### FLAGS
     # Busca la variable optimizar, por defecto queda en False
-    OPTIMIZAR = _cfgGeneral.get("OPTIMIZAR", False)
-
+    OPTIMIZAR = _cfgGeneral.get("RUN_OPTIMIZATION", False)
     RUN_CALC_CURVAS = _cfgGeneral.get("RUN_CALC_CURVAS", False)
-    RUN_OPTIMIZATION = _cfgGeneral.get("RUN_OPTIMIZATION", False)
+    TOP_K_MODEL = _cfgGeneral.get("TOP_K_MODEL", 5)
+
     # PATH MODELO
     DIR_MODELS = _cfgGeneral.get("DIR_MODELS", ".src/models/default/")
 
