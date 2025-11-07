@@ -421,6 +421,7 @@ def pred_ensamble_modelos(
     dir_model_opt: str | Path,   # p.ej. ".../src/models/STUDY_NAME_OPTUNA_202003"
     experimento: str,            # p.ej. "STUDY_NAME_OPTUNA_202003"
     k: int,
+    output_path,
     resumen_csv_name: str = "resumen_ganancias_modelos.csv"
 ) -> pd.DataFrame:
     """
@@ -520,7 +521,7 @@ def pred_ensamble_modelos(
     )
 
     # Guardar CSV
-    out_dir = Path("/home/joacosk/Documents/maestria/Q2/script_project/output")
+    out_dir = Path(output_path)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_csv = out_dir / f"{experimento}.csv"
     df_final_out.to_csv(out_csv, index=False)

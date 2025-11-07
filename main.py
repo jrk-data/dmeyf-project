@@ -16,7 +16,7 @@ from src.optimization import (binary_target,
                               split_train_data,
                               run_study
                               )
-from src.config import (CREAR_NUEVA_BASE, DATA_PATH, LOGS_PATH
+from src.config import (CREAR_NUEVA_BASE, DATA_PATH, LOGS_PATH, OUTPUT_PATH
                         , SEEDS, MES_TRAIN,
                         MES_VALIDACION, MES_TEST,
                         GANANCIA_ACIERTO, COSTO_ESTIMULO, DB_PATH,
@@ -110,7 +110,7 @@ def main():
 
         logger.info("Usando base de datos existente...")
         # Cargo dataset base
-        logger.info("Cargando dataset comision_01...")
+        logger.info("Cargando dataset...")
         #data = select_c01(DB_PATH)  # <-- 'data' es necesario para los siguientes pasos
 
         # Binarizar target
@@ -239,6 +239,7 @@ def main():
             df_pred = pred_ensamble_modelos(
                 Xif=meses_train_separados[mes_ref]['X_pred'],
                 dir_model_opt=str(models_dir),
+                output_path=OUTPUT_PATH,
                 resumen_csv_name="resumen_ganancias.csv",
                 experimento=experimento,
                 k=6

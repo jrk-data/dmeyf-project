@@ -32,7 +32,7 @@ try:
     NFOLD = int(_cfgGeneral.get("NFOLD", 5))
     EARLY_STOPPING_ROUNDS = int(_cfgGeneral.get("EARLY_STOPPING_ROUNDS", 0))  # 0 = no usar
     LOGS_PATH = _cfgGeneral.get("LOGS_PATH", "logs/")
-
+    OUTPUT_PATH = _cfgGeneral.get("OUTPUT_PATH", "output/")
     STORAGE_OPTUNA = _cfgGeneral.get("STORAGE_OPTUNA", None)
     STUDY_NAME_OPTUNA = _cfgGeneral.get("STUDY_NAME_OPTUNA",None)
 
