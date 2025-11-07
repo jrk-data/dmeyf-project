@@ -479,7 +479,8 @@ def pred_ensamble_modelos(
             feature_names = booster.feature_name()
 
             # Alinear features del test con las del modelo
-            Xif_filtered = Xif.reindex(columns=feature_names, fill_value=0)
+            #Xif_filtered = Xif.reindex(columns=feature_names, fill_value=0)
+            Xif_filtered = Xif[feature_names]
 
             y_pred_prob = booster.predict(Xif_filtered)
         except Exception as e:
