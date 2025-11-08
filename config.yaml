@@ -4,7 +4,7 @@
 # CONFIG Local
 
 experiment:
-  STUDY_NAME_OPTUNA: "ensamble_lgb_meses_202005_202103_CV"
+  STUDY_NAME_OPTUNA: "ensamble_lgb_meses_201901_202103_undersampling_cv"
 
 
 # BIG QUERY DATOS
