@@ -94,7 +94,7 @@ def setup_environment(is_vm_environment):
     global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH
 
     if is_vm_environment:
-        paths = _cfgGeneral["virtual_machine"]
+        paths = _cfgGeneral["vm"]
     else:
         paths = _cfgGeneral["local"]
     # Defino los paths
