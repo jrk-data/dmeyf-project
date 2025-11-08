@@ -124,7 +124,7 @@ def main():
         meses_train_separados = {}
         for mes_train in config.MES_TRAIN:
             resp = split_train_data(
-                data, mes_train, config.MES_TEST, config.MES_PRED, config.SUB_SAMPLE, getattr(config, "SEED", None)
+                data, mes_train, config.MES_TEST, config.MES_PRED, getattr(config, "SEED", None), config.SUB_SAMPLE
             )
             meses_train_separados[mes_train] = {
                 'X_train': resp["X_train_pl"].to_pandas(),
