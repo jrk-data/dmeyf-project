@@ -3,7 +3,8 @@ import pandas as pd
 import lightgbm as lgb
 from pathlib import Path
 import json
-from src.config import (SEEDS,GANANCIA_ACIERTO,COSTO_ESTIMULO, STUDY_NAME_OPTUNA, DB_MODELS_TRAIN_PATH )
+import src.config as config
+#from src.config import (SEEDS,GANANCIA_ACIERTO,COSTO_ESTIMULO, STUDY_NAME_OPTUNA, DB_MODELS_TRAIN_PATH )
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
@@ -55,7 +56,7 @@ def train_model(study, X_train, y_train, weights, k,
     }
 
     # itero el top de los modelos y guardo la posición en el top y el objeto trial
-    experimento = STUDY_NAME_OPTUNA
+    experimento = config.STUDY_NAME_OPTUNA
 
     # array para guardar resumen de modelos y guardar metadata
     resumen_rows= list()
@@ -120,7 +121,7 @@ def train_model(study, X_train, y_train, weights, k,
 
     try:
         # 1. Usamos 'with' para asegurar el cierre automático de la conexión
-        with duckdb.connect(str(DB_MODELS_TRAIN_PATH)) as con:
+        with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
 
             # 2. Ejecutamos la creación e inserción secuencialmente.
             #    'CREATE TABLE IF NOT EXISTS' maneja el caso de tabla ya existente.
@@ -237,8 +238,8 @@ def calculo_curvas_ganancia(Xif,
     resumen_rows = []
 
     # ganancia por fila (independiente del modelo)
-    ganancia = np.where(y_test_class == "BAJA+2", GANANCIA_ACIERTO, 0) - \
-               np.where(y_test_class != "BAJA+2", COSTO_ESTIMULO, 0)
+    ganancia = np.where(y_test_class == "BAJA+2", config.GANANCIA_ACIERTO, 0) - \
+               np.where(y_test_class != "BAJA+2", config.COSTO_ESTIMULO, 0)
 
     for model_file in modelos_validos:
         model = lgb.Booster(model_file=f"{model_file}")
@@ -353,7 +354,7 @@ def calculo_curvas_ganancia(Xif,
 
     # Guardar en BBDD test
     try:
-        with duckdb.connect(str(DB_MODELS_TRAIN_PATH)) as con:
+        with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
 
             # 1. Crear Vista Temporal (Asegura que DuckDB vea el DF 'nuevos')
             con.execute("CREATE OR REPLACE TEMP VIEW nuevos_data AS SELECT * FROM nuevos;")
@@ -433,7 +434,7 @@ def pred_ensamble_modelos(
     base_dir.mkdir(parents=True, exist_ok=True)
 
     # ===== 1) Top-K modelos desde DuckDB, filtrando por experimento =====
-    with duckdb.connect(str(DB_MODELS_TRAIN_PATH)) as con:
+    with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
         table_resumen = _resumen_table_name(resumen_csv_name)
         q = f"""
             SELECT modelo, thr_opt, ganancia_max

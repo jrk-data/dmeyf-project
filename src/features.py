@@ -1,7 +1,6 @@
 import duckdb
 #from pydbus import connect
 
-from src.config import DB_PATH
 from typing import Any
 from pathlib import Path
 from logging import getLogger

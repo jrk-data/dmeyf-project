@@ -6,6 +6,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+
 #BASE = Path(__file__).resolve().parents[1]
 
 # DB_PATH = BASE / "data" / "churn.duckdb"
@@ -19,41 +20,48 @@ PATH_CONFIG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.y
 try:
     with open(PATH_CONFIG, "r", encoding="utf-8") as f:
         _cfgGeneral = yaml.safe_load(f)
+        _cfg = _cfgGeneral["competencia01"]
+        _cfg2 = _cfgGeneral["competencia02"]
+        exp = _cfgGeneral["experiment"]
+        bq = _cfgGeneral["bigquery"]
+        opt = _cfgGeneral["optimization"]
+        flag = _cfgGeneral["flags"]
+        pr = _cfgGeneral["preprocessing"]
+        seeds = _cfgGeneral["seeds"]
 
-    _cfg = _cfgGeneral["competencia01"]
-    _cfg2 = _cfgGeneral["competencia02"]
-    # Generales
-    CREAR_NUEVA_BASE = _cfgGeneral.get("NUEVA_BASE", False)
-    DB_PATH = _cfgGeneral.get("DB_PATH", "data/churn.duckdb")
-    STUDY_NAME = _cfgGeneral.get("STUDY_NAME", "default_study")
-    STORAGE = _cfgGeneral.get("STORAGE", None)
-    N_TRIALS = int(_cfgGeneral.get("N_TRIALS", 50))
-    N_STARTUP_TRIALS = int(_cfgGeneral.get("N_STARTUP_TRIALS", 20))
-    NFOLD = int(_cfgGeneral.get("NFOLD", 5))
-    EARLY_STOPPING_ROUNDS = int(_cfgGeneral.get("EARLY_STOPPING_ROUNDS", 0))  # 0 = no usar
-    LOGS_PATH = _cfgGeneral.get("LOGS_PATH", "logs/")
-    OUTPUT_PATH = _cfgGeneral.get("OUTPUT_PATH", "output/")
-    STORAGE_OPTUNA = _cfgGeneral.get("STORAGE_OPTUNA", None)
-    STUDY_NAME_OPTUNA = _cfgGeneral.get("STUDY_NAME_OPTUNA",None)
+    # ---- Semillas ----
+    SEEDS = seeds.get("SEEDS")
+    SEED = seeds.get("SEED")
 
-    TOP_K_MODELS = _cfgGeneral.get("TOP_K_MODELS", 5)
+    # ---- Experimento ----
+    CREAR_NUEVA_BASE = flag.get("NUEVA_BASE", False)
+    STUDY_NAME = exp.get("STUDY_NAME", "default_study")
+    STUDY_NAME_OPTUNA = exp.get("STUDY_NAME_OPTUNA",None)
 
-    ###### FLAGS
+    # ---- Optimization ----
+    N_TRIALS = int(opt.get("N_TRIALS", 50))
+    N_STARTUP_TRIALS = int(opt.get("N_STARTUP_TRIALS", 20))
+    NFOLD = int(opt.get("NFOLD", 5))
+    EARLY_STOPPING_ROUNDS = int(opt.get("EARLY_STOPPING_ROUNDS", 0))  # 0 = no usar
+
+    # --- Preprocessing ----
+
+    SUB_SAMPLE = pr.get("SUB_SAMPLE", None) # si es None, no se hace sub-sampling
+
+    # --- Flags ----
     # Busca la variable optimizar, por defecto queda en False
-    OPTIMIZAR = _cfgGeneral.get("RUN_OPTIMIZATION", False)
-    RUN_CALC_CURVAS = _cfgGeneral.get("RUN_CALC_CURVAS", False)
-    TOP_K_MODEL = _cfgGeneral.get("TOP_K_MODEL", 5)
+    OPTIMIZAR = flag.get("RUN_OPTIMIZATION", False)
+    RUN_CALC_CURVAS = flag.get("RUN_CALC_CURVAS", False)
+    TOP_K_MODEL = flag.get("TOP_K_MODEL", 5)
 
-    # PATH MODELO
-    DIR_MODELS = _cfgGeneral.get("DIR_MODELS", ".src/models/default/")
 
-    DB_MODELS_TRAIN_PATH = _cfgGeneral.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
 
-    START_POINT = _cfgGeneral.get("START_POINT", "FEATURES")
-    DATA_PATH = _cfgGeneral.get("DATA_PATH", "data/competencia_01.csv")
 
-    # Competencia 01
-    SEEDS = _cfg2.get("SEEDS")
+    START_POINT = flag.get("START_POINT", "FEATURES")
+
+
+
+    # ---- Competencia 02 ----
     MES_TRAIN = _cfg2.get("MONTH_TRAIN", [202102])
     MES_VALIDACION = _cfg2.get("MONTH_VALIDATION", [202103])
     MES_TEST = _cfg2.get("MONTH_TEST", [202104])
@@ -76,3 +84,25 @@ try:
 except Exception as e:
     logger.error(f"Error al cargar el archivo de configuracion: {e}")
     raise
+
+
+def setup_environment(is_vm_environment):
+    """
+    Función que recibe un booleano y ejecuta el IF/ELSE
+    correspondiente.
+    """
+    global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH
+
+    if is_vm_environment:
+        paths = _cfgGeneral["virtual_machine"]
+    else:
+        paths = _cfgGeneral["local"]
+    # Defino los paths
+    DB_PATH = paths.get("DB_PATH", "data/churn.duckdb")
+    LOGS_PATH = paths.get("LOGS_PATH", "logs/")
+    OUTPUT_PATH = paths.get("OUTPUT_PATH", "output/")
+    STORAGE_OPTUNA = paths.get("STORAGE_OPTUNA", None)
+    DIR_MODELS = paths.get("DIR_MODELS", "src/models/default/")
+    DATA_PATH = paths.get("DATA_PATH", "data/competencia_01.csv")
+    DB_MODELS_TRAIN_PATH = paths.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
+
