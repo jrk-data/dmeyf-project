@@ -4,7 +4,7 @@
 # CONFIG Local
 
 experiment:
-  STUDY_NAME_OPTUNA: "ensamble_lgb_meses_201901_202103_undersampling_cv"
+  STUDY_NAME_OPTUNA: "test_1_lgb_mes_202007_undersampling_cv"
 
 
 # BIG QUERY DATOS
@@ -56,8 +56,8 @@ flags:
   NUEVA_BASE: False
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   START_POINT: "PREDICT"
-  RUN_CALC_CURVAS: False
-  RUN_OPTIMIZATION: False
+  RUN_CALC_CURVAS: True
+  RUN_OPTIMIZATION: True
 # ------------------------------------------------------------------
 
 seeds:

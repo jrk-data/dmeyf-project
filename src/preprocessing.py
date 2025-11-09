@@ -127,7 +127,7 @@ def split_train_data(
     if SUB_SAMPLE is not None:
         train_data=_undersampling(train_data , SUB_SAMPLE,SEMILLA)
 
-    columns_drop = ["clase_ternaria", "clase_peso", "clase_binaria1", "clase_binaria2"]
+    columns_drop = ["clase_ternaria", "clase_peso","clase_binaria", "clase_binaria1", "clase_binaria2"]
     logger.info(f"Dropeando (si existen): {columns_drop}")
 
     try:
