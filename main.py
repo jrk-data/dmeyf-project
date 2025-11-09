@@ -183,7 +183,7 @@ def main():
 
             for mes, bundle in meses_train_separados.items():
                 study_name = f"{base_study_name}_{mes}"
-                study = run_study(
+                study = run_study_cv(
                     X_train=bundle['X_train'],
                     y_train=bundle['y_train_binaria'],
                     semillas = semillas_bay,
