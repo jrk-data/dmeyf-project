@@ -1,6 +1,7 @@
 from typing import Tuple, Dict, Any , Iterable, Union
 import numpy as np
 import polars as pl
+from google.cloud import bigquery
 
 from logging import getLogger
 
@@ -28,6 +29,33 @@ def binary_target(df: pl.DataFrame) -> pl.DataFrame:
         logger.error(f"Error en binarizar target: {e}")
     finally:
         return data
+
+def create_binary_target_column(project, dataset, table):
+    """Crea una columna clase_binaria en BigQuery y la rellena según clase_ternaria."""
+    client = bigquery.Client(project=project)
+    table_id = f"{project}.{dataset}.{table}"
+
+    # 1️⃣ Crear la columna si no existe
+    alter_query = f"""
+    ALTER TABLE `{table_id}`
+    ADD COLUMN IF NOT EXISTS clase_binaria INT64;
+    """
+    client.query(alter_query).result()
+
+    # 2️⃣ Poblarla según el valor de clase_ternaria
+    update_query = f"""
+    UPDATE `{table_id}`
+    SET clase_binaria = CASE
+        WHEN clase_ternaria IN ('BAJA+1', 'BAJA+2') THEN 1
+        WHEN clase_ternaria = 'CONTINUA' THEN 0
+        ELSE NULL
+    END
+    WHERE clase_ternaria IS NOT NULL;
+    """
+
+    job = client.query(update_query)
+    job.result()
+    logger.info(f"✅ Columna 'clase_binaria' creada y actualizada correctamente en {table_id}.")
 
 
 # Función auxiliar para train test split
@@ -113,12 +141,10 @@ def split_train_data(
                     if name in df.columns else
                     pl.Series([None]*n).to_numpy())
 
-        y_train_binaria1 = _col_or_empty(train_data, "clase_binaria1", n_tr)
-        y_train_binaria2 = _col_or_empty(train_data, "clase_binaria2", n_tr)
+        y_train_binaria = _col_or_empty(train_data, "clase_binaria", n_tr)
         w_train          = (_col_or_empty(train_data, "clase_peso", n_tr)).astype(float) if "clase_peso" in train_data.columns else pl.Series([1.0]*n_tr).to_numpy()
 
-        y_test_binaria1  = _col_or_empty(test_data, "clase_binaria1", n_te)
-        y_test_binaria2  = _col_or_empty(test_data, "clase_binaria2", n_te)
+        y_test_binaria  = _col_or_empty(test_data, "clase_binaria", n_te)
         y_test_class     = (_col_or_empty(test_data, "clase_ternaria", n_te))
 
     except Exception as e:
@@ -129,10 +155,8 @@ def split_train_data(
         'X_train_pl': X_train_pl,
         'X_test_pl':  X_test_pl,
         'X_pred_pl':  X_pred_pl,
-        'y_train_binaria1': y_train_binaria1,
-        'y_train_binaria2': y_train_binaria2,
-        'y_test_binaria1':  y_test_binaria1,
-        'y_test_binaria2':  y_test_binaria2,
+        'y_train_binaria': y_train_binaria,
+        'y_test_binaria':  y_test_binaria,
         'w_train':          w_train,
         'y_test_class':     y_test_class,
     }

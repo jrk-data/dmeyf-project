@@ -43,7 +43,7 @@ try:
     N_STARTUP_TRIALS = int(opt.get("N_STARTUP_TRIALS", 20))
     NFOLD = int(opt.get("NFOLD", 5))
     EARLY_STOPPING_ROUNDS = int(opt.get("EARLY_STOPPING_ROUNDS", 0))  # 0 = no usar
-
+    N_BOOSTS = 1000
     # --- Preprocessing ----
 
     SUB_SAMPLE = pr.get("SUB_SAMPLE", None) # si es None, no se hace sub-sampling
@@ -78,6 +78,9 @@ try:
     BQ_DATASET = _cfg2.get("BQ_DATASET", None)
     BQ_TABLE = _cfg2.get("BQ_TABLE", None)
     BQ_TABLE_TARGETS = _cfg2.get("BQ_TABLE_TARGETS", None)
+
+
+
 
 
 

@@ -2,7 +2,7 @@ import logging
 from google.cloud import bigquery, bigquery_storage # storage para que lea mas rápido
 import polars as pl
 import pyarrow as pa
-
+import src.config as config
 
 
 logger = logging.getLogger(__name__)
@@ -189,8 +189,7 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
         CLUSTER BY foto_mes, numero_de_cliente AS
         SELECT
-          a.foto_mes,
-          a.numero_de_cliente,
+          a.*,
           {expr_sum_master} AS q_producto_master,
           {expr_sum_visa} AS q_producto_visa,
           {expr_sum_general} AS q_producto_general,
@@ -206,9 +205,26 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         ;
         """
         client.query(query)
-        logger.info("Se ha creado la tabla de q_productos_por_cliente_mes")
+        logger.info("Se ha creado la tabla de c02_products")
     except Exception as e:
         logger.error(e)
+
+def create_table_c02_products():
+    logger.info("Creando tabla de c02_products...")
+    query= f"""
+        CREATE TABLE `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_products` AS
+        SELECT 
+                a.*, 
+                b.* except(foto_mes, numero_de_cliente,foto_mes_date)
+            FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{config.BQ_TABLE}` AS a
+            INNER JOIN `{config.BQ_PROJECT}.{config.BQ_DATASET}.q_productos_por_cliente_mes` AS b -- esta tabla ya tiene clase_ternaria
+            on a.foto_mes = b.foto_mes AND a.numero_de_cliente = b.numero_de_cliente
+    """
+    client = bigquery.Client(project=config.BQ_PROJECT)
+    client.query(query)
+    logger.info("Se ha creado la tabla de c02_products")
+
+
 
 
 def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
@@ -223,13 +239,11 @@ def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
 
         query = f"""
             SELECT 
-                a.*, 
-                b.* except(foto_mes, numero_de_cliente,foto_mes_date)
+                a.*
             FROM `{PROJECT}.{DATASET}.{TABLE}` AS a
-            INNER JOIN `{PROJECT}.{DATASET}.q_productos_por_cliente_mes` AS b -- esta tabla ya tiene clase_ternaria
-            on a.foto_mes = b.foto_mes AND a.numero_de_cliente = b.numero_de_cliente
             WHERE a.foto_mes IN ({MESES})
         """
+
         logger.info(f"Query para select_data_c02: {query}")
         # Ejecutar la query y traer resultados como ArrowTable (más eficiente)
         job = client.query(query)
@@ -255,4 +269,7 @@ def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
     except Exception as e:
         logger.error(f"Error ejecutando select_data_c02: {e}")
         return pl.DataFrame()  # devolver DF vacío en caso de error
+
+
+
 

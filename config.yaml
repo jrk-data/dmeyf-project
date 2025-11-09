@@ -43,6 +43,7 @@ optimization:
   N_STARTUP_TRIALS: 20
   NFOLD: 5
   EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
+  N_BOOSTS: 1000
   # Numero de modelos que agarro de la optimizacion hiperparámetros para entrenar
   TOP_K_MODEL: 5
 

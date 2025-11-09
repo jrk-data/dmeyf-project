@@ -1,13 +1,14 @@
 import duckdb
 #from pydbus import connect
-
+import re
 from typing import Any
 from pathlib import Path
 from logging import getLogger
 from typing import List, Tuple
 import polars as pl
+import src.config as config
 
-from google.cloud import bigquery
+from google.cloud import bigquery,bigquery_storage
 
 
 logger = getLogger(__name__)
@@ -40,6 +41,11 @@ def get_numeric_columns_pl(
         if dtype in numeric_types and name not in exclude_cols
     ]
     return numeric_cols
+
+
+
+
+
 
 def feature_engineering_lag(df: pl.DataFrame, columnas: List[str], cant_lag: int = 1) -> pl.DataFrame:
     sql = "SELECT "
@@ -130,3 +136,113 @@ def feature_engineering_delta(
     return out
 
 
+
+def creation_lags(columnas: List[str], cant_lag: int = 1):
+    """
+    Crea/actualiza la tabla c02_lags con lags de 1..cant_lag para cada columna,
+    particionada por foto_mes y clusterizada por numero_de_cliente.
+    NO genera lag_0 ni duplica columnas.
+    """
+    client = bigquery.Client(project=config.BQ_PROJECT)
+    meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
+
+    # LAGs: 1..cant_lag (nunca 0)
+    lag_exprs = []
+    for col in columnas:
+        for k in range(1, cant_lag + 1):
+            lag_exprs.append(
+                f" LAG(a.{col}, {k}) OVER (PARTITION BY a.numero_de_cliente ORDER BY a.foto_mes) AS {col}_lag_{k}"
+            )
+
+    select_items = [
+        ", ".join(lag_exprs) if lag_exprs else None,
+    ]
+    # limpiar Nones y unir sin coma final
+    select_list = ",\n  ".join([s for s in select_items if s])
+
+    sql = f"""
+    CREATE OR REPLACE TABLE `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_lags`
+    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
+    CLUSTER BY numero_de_cliente
+    AS
+    SELECT
+    a.*,
+      {select_list}
+    FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_products` AS a
+    """
+
+    job_cfg = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ArrayQueryParameter("meses", "INT64", list(meses))]
+    )
+    job = client.query(sql, job_config=job_cfg)
+    job.result()
+
+def creation_deltas(columnas, cant_lag):
+    client = bigquery.Client(project=config.BQ_PROJECT)
+    table_fqn = f"`{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_lags`"
+    table_delta = f"`{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_delta`"
+    # expresiones delta (solo numéricas)
+    delta_exprs = []
+    for col in columnas:
+        for k in range(1, cant_lag+1):
+            delta_exprs.append(f"SAFE_CAST({col} AS FLOAT64) - SAFE_CAST({col}_lag_{k} AS FLOAT64) AS {col}_{k}")
+            # opcional %:
+            # delta_exprs.append(f"SAFE_DIVIDE(SAFE_CAST({col} AS FLOAT64) - SAFE_CAST({col}_lag{k} AS FLOAT64), NULLIF(SAFE_CAST({col}_lag{k} AS FLOAT64), 0)) AS {col}_d{k}_pct")
+
+    delta_sql = ",\n  ".join(delta_exprs)
+
+    sql = f"""
+    CREATE OR REPLACE TABLE {table_delta}
+    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
+    CLUSTER BY numero_de_cliente
+    AS
+    SELECT
+      src.*,
+      {delta_sql}
+    FROM {table_fqn} AS src
+    """
+    job = client.query(sql)
+    job.result()
+
+
+# ------ SELECT DE DATASET CON FEATURES
+
+
+def _select_table_schema(project, dataset, table):
+    client = bigquery.Client(project=project)
+    t = client.get_table(f"{project}.{dataset}.{table}")
+    cols = [f.name for f in t.schema]
+    return cols
+
+def _filter_lags_deltas(cols, k):
+    filtradas = []
+    for c in cols:
+        # Si es lag o delta hasta 5
+        if '_lag_' not in c and '_delta_' not in c:
+            filtradas.append(c)
+        elif re.search(rf'_lag_[1-{k}]$', c) or re.search(rf'_delta_[1-{k}]$', c):
+            filtradas.append(c)
+    return filtradas
+
+def select_data_lags_deltas(k):
+    'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
+    meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
+
+    schema_table = _select_table_schema(config.BQ_PROJECT, config.BQ_DATASET, 'c02_delta')
+
+    columns = _filter_lags_deltas(schema_table, k)
+
+    client = bigquery.Client(project=config.BQ_PROJECT)
+    bqstorage_client = bigquery_storage.BigQueryReadClient()
+
+    meses =  ", ".join(str(int(m)) for m in meses)
+
+    query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_delta`
+    where foto_mes in UNNEST ([{meses}])"""
+
+    job = client.query(query)
+
+    # Uso Storage API para traer Arrow más rápido
+    arrow_table = job.result().to_arrow(bqstorage_client=bqstorage_client)
+    df_pl = pl.from_arrow(arrow_table)
+    return df_pl

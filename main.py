@@ -62,15 +62,16 @@ from src.loader import (
     select_data_c02, tabla_productos_por_cliente
 )
 from src.features import (
-    get_numeric_columns_pl, feature_engineering_lag, feature_engineering_delta
+    get_numeric_columns_pl, feature_engineering_lag, feature_engineering_delta, creation_lags, creation_deltas, select_data_lags_deltas
 )
-from src.optimization import run_study
-from src.preprocessing import binary_target, split_train_data
+from src.optimization import run_study, create_seed
+from src.preprocessing import binary_target, split_train_data, create_binary_target_column
 from src.train_test import train_model, calculo_curvas_ganancia, pred_ensamble_modelos
 
 
 def main():
     logger.info("Iniciando Corrida")
+    semillas_bay = create_seed(n_semillas=6)
 
     try:
         # ---------------------------------------------------------------------------------
@@ -89,32 +90,57 @@ def main():
             create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
 
             # Creo q_productos_cliente_mes
-            tabla_productos_por_cliente(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
+            tabla_productos_por_cliente(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, 'c02_q_productos')
+
+            # ----------- Obtengo algunos datos para obtener tipos de columnas -------------
+            data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, 'c02_products', [202102])
+            # Columnas a excluir
+            exclude_cols = ["numero_de_cliente", "foto_mes", "clase_binaria1", "clase_binaria2", "clase_peso"]
+            # Creo array con columnas numéricas
+            numeric_cols = get_numeric_columns_pl(data, exclude_cols=exclude_cols)
+
+            # Creo tabla con lags
+            creation_lags(numeric_cols, 5)
+
+            # Creo tabla con deltas
+            creation_deltas(numeric_cols, 5)
+
 
         # Meses a usar
         meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
 
+        table_with_deltas = 'c02_deltas'
+
+
+        # Binarizar target
+        logger.info("Binarizando target...")
+        create_binary_target_column(table_with_deltas)
+
+
         # Selecciono los datos de los meses que se van a trabajar
-        data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, meses)
+        #data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas, meses)
 
         logger.info("Usando base de datos existente...")
         logger.info("Cargando dataset...")
 
-        # Binarizar target
-        logger.info("Binarizando target...")
-        data = binary_target(data)
 
         # ---------------------------------------------------------------------------------
         # 2. FEATURE ENGINEERING (START_POINT == 'FEATURES')
+        # las features ya están creadas, acá selecciono las que quiero utilizar
         # ---------------------------------------------------------------------------------
         if config.START_POINT in ['FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT']:
             logger.info("#### INICIO FEATURE ENGINEERING ###")
             logger.info("Creando Lags...")
-            numeric_cols = get_numeric_columns_pl(data, exclude_cols=["numero_de_cliente", "foto_mes"])
-            data = feature_engineering_lag(data, numeric_cols, cant_lag=3)
+            numeric_cols = get_numeric_columns_pl(data, exclude_cols=["numero_de_cliente", "foto_mes","clase_binaria1","clase_binaria2",'clase_peso'])
 
-            logger.info("Creando Deltas...")
-            data = feature_engineering_delta(data, numeric_cols, 3)
+            # ---- Creación de tabla con lags ----
+            #creation_lags(meses, numeric_cols, 5)
+            # SELECT LAGS - DELTAS
+            data = select_data_lags_deltas(k=4)
+
+            #data = feature_engineering_lag(data, numeric_cols, cant_lag=3)
+            #logger.info("Creando Deltas...")
+            #data = feature_engineering_delta(data, numeric_cols, 3)
             logger.info(f"Data shape: {data.shape}")
             logger.info("#### FIN FEATURE ENGINEERING ###")
 
@@ -150,11 +176,13 @@ def main():
                 study = run_study(
                     X_train=bundle['X_train'],
                     y_train=bundle['y_train_b2'],
+                    semillas = semillas_bay,
                     SEED=config.SEEDS[0],
                     w_train=bundle['w_train'],
                     matching_categorical_features=None,
                     storage_optuna=storage_optuna,
                     study_name_optuna=study_name,
+                    semillas_bay,
                     optimizar=config.OPTIMIZAR,  # True: optimiza; False: sólo carga
                 )
                 studies_by_month[mes] = study
