@@ -107,6 +107,7 @@ def main():
 
             # Binarizando target
             logger.info("Binarizando target...")
+            table_with_deltas = 'c02_delta'
             create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
 
         # Meses a usar
@@ -151,7 +152,7 @@ def main():
         for mes_train in config.MES_TRAIN:
             logger.info(f"Splitting data for mes {mes_train}...")
 
-            data = select_data_lags_deltas(mes_train,config.MES_TEST,k=3)
+            data = select_data_lags_deltas(table_with_deltas,mes_train,config.MES_TEST,k=3)
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"Inicio de split_train_data")
             resp = split_train_data(

@@ -224,13 +224,13 @@ def _filter_lags_deltas(cols, k):
             filtradas.append(c)
     return filtradas
 
-def select_data_lags_deltas(mes_train, mes_test_lista, k):
+def select_data_lags_deltas(tabla, mes_train, mes_test_lista, k):
     'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
     mes_test =  mes_test_lista.pop(0)
     meses = [mes_train, mes_test] + mes_test_lista
     logger.info(f"meses: {meses}")
 
-    schema_table = _select_table_schema(config.BQ_PROJECT, config.BQ_DATASET, 'c02_delta')
+    schema_table = _select_table_schema(config.BQ_PROJECT, config.BQ_DATASET, tabla)
 
     columns = _filter_lags_deltas(schema_table, k)
 
@@ -239,7 +239,7 @@ def select_data_lags_deltas(mes_train, mes_test_lista, k):
 
     meses =  ", ".join(str(int(m)) for m in meses)
 
-    query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_delta`
+    query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{tabla}`
     where foto_mes in UNNEST ([{meses}])"""
 
     job = client.query(query)
