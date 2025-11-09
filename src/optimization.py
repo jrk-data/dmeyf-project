@@ -13,7 +13,7 @@ from src.gain_functions import lgb_gan_eval
 from logging import getLogger
 from lightgbm import early_stopping
 import src.config as config
-from create_seeds import create_seed
+from src.create_seeds import create_seed
 
 logger = getLogger(__name__)
 
