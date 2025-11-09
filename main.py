@@ -105,6 +105,9 @@ def main():
             # Creo tabla con deltas
             creation_deltas(numeric_cols, 5)
 
+            # Binarizando target
+            logger.info("Binarizando target...")
+            create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
 
         # Meses a usar
         meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
@@ -113,8 +116,6 @@ def main():
 
 
         # Binarizar target
-        logger.info("Binarizando target...")
-        create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
 
 
         # Selecciono los datos de los meses que se van a trabajar
@@ -136,12 +137,11 @@ def main():
             # ---- Creación de tabla con lags ----
             #creation_lags(meses, numeric_cols, 5)
             # SELECT LAGS - DELTAS
-            data = select_data_lags_deltas(k=4)
+            #data = select_data_lags_deltas(k=4)
 
             #data = feature_engineering_lag(data, numeric_cols, cant_lag=3)
             #logger.info("Creando Deltas...")
             #data = feature_engineering_delta(data, numeric_cols, 3)
-            logger.info(f"Data shape: {data.shape}")
             logger.info("#### FIN FEATURE ENGINEERING ###")
 
         # ---------------------------------------------------------------------------------
@@ -149,12 +149,20 @@ def main():
         # ---------------------------------------------------------------------------------
         meses_train_separados = {}
         for mes_train in config.MES_TRAIN:
+            logger.info(f"Splitting data for mes {mes_train}...")
+
+            data = select_data_lags_deltas(mes_train,config.MES_TEST,k=3)
+            logger.info(f"Data shape: {data.shape}")
+            logger.info(f"Inicio de split_train_data")
             resp = split_train_data(
                 data, mes_train, config.MES_TEST, config.MES_PRED, getattr(config, "SEED", None), config.SUB_SAMPLE
             )
+            logger.info(f"Fin de split_train_data")
+
+
             meses_train_separados[mes_train] = {
                 'X_train': resp["X_train_pl"].to_pandas(),
-                'y_train_b2': resp["y_train_binaria2"],
+                'y_train_binaria': resp["y_train_binaria"],
                 'w_train': resp["w_train"],
                 'y_test_class': resp["y_test_class"],
                 'X_test': resp["X_test_pl"].to_pandas(),
@@ -175,7 +183,7 @@ def main():
                 study_name = f"{base_study_name}_{mes}"
                 study = run_study(
                     X_train=bundle['X_train'],
-                    y_train=bundle['y_train_b2'],
+                    y_train=bundle['y_train_binaria'],
                     semillas = semillas_bay,
                     SEED=config.SEEDS[0],
                     w_train=bundle['w_train'],
@@ -203,7 +211,7 @@ def main():
                     if study is None:
                         study = run_study(
                             X_train=bundle['X_train'],
-                            y_train=bundle['y_train_b2'],
+                            y_train=bundle['y_train_binaria'],
                             SEED=config.SEEDS[0],
                             w_train=bundle['w_train'],
                             matching_categorical_features=None,
@@ -217,7 +225,7 @@ def main():
                     _meta = train_model(
                         study=study,
                         X_train=bundle['X_train'],
-                        y_train=bundle['y_train_b2'],
+                        y_train=bundle['y_train_binaria'],
                         weights=bundle['w_train'],
                         k=top_k_model,
                         experimento=study_name,

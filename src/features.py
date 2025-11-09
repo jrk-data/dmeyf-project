@@ -224,9 +224,11 @@ def _filter_lags_deltas(cols, k):
             filtradas.append(c)
     return filtradas
 
-def select_data_lags_deltas(k):
+def select_data_lags_deltas(mes_train, mes_test_lista, k):
     'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
-    meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
+    mes_test =  mes_test_lista.pop(0)
+    meses = [mes_train, mes_test] + mes_test_lista
+    logger.info(f"meses: {meses}")
 
     schema_table = _select_table_schema(config.BQ_PROJECT, config.BQ_DATASET, 'c02_delta')
 
