@@ -187,7 +187,7 @@ def main():
                 study = run_study_cv(
                     X_train=bundle['X_train'],
                     y_train=bundle['y_train_binaria'],
-                    semillas = semillas_bay,
+                    #semillas = semillas_bay,
                     SEED=config.SEEDS[0],
                     w_train=bundle['w_train'],
                     matching_categorical_features=None,
