@@ -181,6 +181,7 @@ def main():
             logger.info(f"Seteando path de BBDD Optuna: {storage_optuna} - base_name={base_study_name}")
             logger.info("Iniciando estudios por mes...")
 
+            # mantengo el cv en la bayesiana porque entrno por mes
             for mes, bundle in meses_train_separados.items():
                 study_name = f"{base_study_name}_{mes}"
                 study = run_study_cv(
