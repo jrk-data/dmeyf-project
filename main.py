@@ -114,7 +114,7 @@ def main():
 
         # Binarizar target
         logger.info("Binarizando target...")
-        create_binary_target_column(table_with_deltas)
+        create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
 
 
         # Selecciono los datos de los meses que se van a trabajar
