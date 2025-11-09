@@ -73,8 +73,8 @@ def _to_int_list(x):
 def _undersampling(df:pl.DataFrame ,undersampling_rate:float , semilla:int) -> pl.DataFrame:
     logger.info("Comienzo del subsampleo")
     np.random.seed(semilla)
-    clientes_minoritaria = df.filter(pl.col("clase_ternaria") != "Continua").get_column("numero_de_cliente").unique()
-    clientes_mayoritaria = df.filter(pl.col("clase_ternaria") == "Continua").get_column("numero_de_cliente").unique()
+    clientes_minoritaria = df.filter(pl.col("clase_ternaria") != "CONTINUA").get_column("numero_de_cliente").unique()
+    clientes_mayoritaria = df.filter(pl.col("clase_ternaria") == "CONTINUA").get_column("numero_de_cliente").unique()
 
     logger.info(f"Clientes minoritarios: {len(clientes_minoritaria)}")
     logger.info(f"Clientes mayoritarios: {len(clientes_mayoritaria)}")
@@ -85,7 +85,7 @@ def _undersampling(df:pl.DataFrame ,undersampling_rate:float , semilla:int) -> p
     # Unimos los IDs seleccionados
     clientes_finales = np.concatenate([clientes_minoritaria, clientes_mayoritaria_sample])
 
-    logger.info(f"Clientes finales par ahacer undersampling: {len(clientes_finales)}")
+    logger.info(f"Clientes finales para hacer undersampling: {len(clientes_finales)}")
 
     df_train_undersampled = df.filter(pl.col("numero_de_cliente").is_in(clientes_finales))
 
