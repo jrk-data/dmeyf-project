@@ -69,6 +69,7 @@ def run_study(X_train, y_train, semillas, SEED,w_train, matching_categorical_fea
     if isinstance(w_train, pl.Series):
         w_train = w_train.to_pandas()
 
+    logger.info("Se cargaron X_train, y_train_binaria y w_train")
     num_meses = len(MES_TRAIN)
     f_val = X_train["foto_mes"] == config.MES_VALIDACION
 
