@@ -517,10 +517,14 @@ def pred_ensamble_modelos(
 
     # Output final
     df_final_out = (
-        df_final[['numero_de_cliente', 'foto_mes', 'y_pred']]
+        df_final[['numero_de_cliente', 'y_pred']]
         .drop_duplicates(subset=['numero_de_cliente'], keep='last')
         .reset_index(drop=True)
     )
+    df_final_out = df_final_out.rename(columns={
+        'y_pred': 'Predicted'
+    })
+
 
     # Guardar CSV
     out_dir = Path(output_path)
