@@ -1,7 +1,7 @@
 import random
-from src.config import seeds
+from src.config import SEEDS
 
-semillas_nuevas = seeds.copy()
+semillas_nuevas = SEEDS.copy()
 random.seed(42)
 
 
