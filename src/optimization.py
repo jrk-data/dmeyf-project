@@ -14,6 +14,8 @@ from logging import getLogger
 from lightgbm import early_stopping
 import src.config as config
 from src.create_seeds import create_seed
+from src.utils import _coerce_object_cols
+
 
 logger = getLogger(__name__)
 
@@ -199,6 +201,13 @@ def run_study_cv(X_train, y_train, SEED,w_train, matching_categorical_features: 
               ,storage_optuna, study_name_optuna, optimizar = False):
     """Crea/ejecuta el estudio Optuna (TPE bayesiano)."""
 
+    if isinstance(X_train, pl.DataFrame):
+        X_train = X_train.to_pandas()
+
+    # 🔧 Arreglo clave:
+    X_train = _coerce_object_cols(X_train)
+
+
     def objective(trial: optuna.Trial) -> float:
         num_leaves = trial.suggest_int('num_leaves', 3, 3000)
         learning_rate = trial.suggest_float('learning_rate', 0.0001, 0.3)  # mas bajo, más iteraciones necesita
@@ -228,6 +237,8 @@ def run_study_cv(X_train, y_train, SEED,w_train, matching_categorical_features: 
             'verbose': -1,
             'extra_trees': True
         }
+
+
         train_data = lgb.Dataset(X_train,
                                  label=y_train,  # eligir la clase
                                  weight=w_train,
