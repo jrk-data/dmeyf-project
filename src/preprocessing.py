@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, Any , Iterable, Union
+from typing import Iterable, Union
 import numpy as np
 import polars as pl
 from google.cloud import bigquery
@@ -11,6 +11,7 @@ logger = getLogger(__name__)
 
 def binary_target(df: pl.DataFrame) -> pl.DataFrame:
     """Binariza una columna de un DataFrame."""
+    data = df
     try:
         logger.info("Asignando Pesos a los targets")
         data = df.with_columns([
@@ -84,12 +85,15 @@ def _undersampling(df:pl.DataFrame ,undersampling_rate:float , semilla:int) -> p
     # Unimos los IDs seleccionados
     clientes_finales = np.concatenate([clientes_minoritaria, clientes_mayoritaria_sample])
 
-    df_train_undersampled = df.filter(pl.col("numero_de_cliente").is_in(clientes_finales)).copy()
+    logger.info(f"Clientes finales par ahacer undersampling: {len(clientes_finales)}")
+
+    df_train_undersampled = df.filter(pl.col("numero_de_cliente").is_in(clientes_finales))
 
     logger.info(f"Shape original: {df.shape}")
     logger.info(f"Shape undersampled: {df_train_undersampled.shape}")
 
-    df_train_undersampled = df_train_undersampled.sample(frac=1, random_state=semilla).reset_index(drop=True)
+    df_train_undersampled = df_train_undersampled.sample(fraction=1.0, seed=semilla)
+
     return df_train_undersampled
 
 
