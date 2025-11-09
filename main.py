@@ -150,6 +150,7 @@ def main():
         # ---------------------------------------------------------------------------------
         meses_train_separados = {}
         for mes_train in config.MES_TRAIN:
+
             logger.info(f"Splitting data for mes {mes_train}...")
 
             data = select_data_lags_deltas(table_with_deltas,mes_train,config.MES_TEST,k=3)
