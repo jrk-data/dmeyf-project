@@ -227,6 +227,8 @@ def _filter_lags_deltas(cols, k):
 def select_data_lags_deltas(tabla, mes_train, mes_test_lista,mes_pred, k):
     'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
     mes_test =  mes_test_lista[0]
+    logger.info(f"mes_test: {mes_test}")
+    logger.info(f"mes_pred: {mes_pred}")
     meses = [mes_train, mes_test, mes_pred]
     logger.info(f"meses: {meses}")
 
