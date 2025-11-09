@@ -109,7 +109,7 @@ def main():
         # Meses a usar
         meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
 
-        table_with_deltas = 'c02_deltas'
+        table_with_deltas = 'c02_delta'
 
 
         # Binarizar target
