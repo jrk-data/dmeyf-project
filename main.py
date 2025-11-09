@@ -182,7 +182,6 @@ def main():
                     matching_categorical_features=None,
                     storage_optuna=storage_optuna,
                     study_name_optuna=study_name,
-                    semillas_bay,
                     optimizar=config.OPTIMIZAR,  # True: optimiza; False: sólo carga
                 )
                 studies_by_month[mes] = study
