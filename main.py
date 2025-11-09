@@ -131,7 +131,7 @@ def main():
         if config.START_POINT in ['FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT']:
             logger.info("#### INICIO FEATURE ENGINEERING ###")
             logger.info("Creando Lags...")
-            numeric_cols = get_numeric_columns_pl(data, exclude_cols=["numero_de_cliente", "foto_mes","clase_binaria1","clase_binaria2",'clase_peso'])
+            #numeric_cols = get_numeric_columns_pl(data, exclude_cols=["numero_de_cliente", "foto_mes","clase_binaria1","clase_binaria2",'clase_peso'])
 
             # ---- Creación de tabla con lags ----
             #creation_lags(meses, numeric_cols, 5)
