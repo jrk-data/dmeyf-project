@@ -153,9 +153,10 @@ def main():
 
             logger.info(f"Splitting data for mes {mes_train}...")
             # selecciono mes prediccion
-            mes_pred = config.MES_PRED[0]
+
+
             # paso mes predicción al select
-            data = select_data_lags_deltas(table_with_deltas,mes_train,mes_pred,config.MES_TEST,k=3)
+            data = select_data_lags_deltas(table_with_deltas,mes_train,config.MES_TEST,config.MES_PRED,k=3)
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"Inicio de split_train_data")
             resp = split_train_data(
