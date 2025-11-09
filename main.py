@@ -64,7 +64,7 @@ from src.loader import (
 from src.features import (
     get_numeric_columns_pl, feature_engineering_lag, feature_engineering_delta, creation_lags, creation_deltas, select_data_lags_deltas
 )
-from src.optimization import run_study, create_seed
+from src.optimization import (run_study, run_study_cv, create_seed)
 from src.preprocessing import binary_target, split_train_data, create_binary_target_column
 from src.train_test import train_model, calculo_curvas_ganancia, pred_ensamble_modelos
 
@@ -211,7 +211,7 @@ def main():
                     study_name = f"{base_study_name}_{mes}"
                     study = studies_by_month.get(mes)
                     if study is None:
-                        study = run_study(
+                        study = run_study_cv(
                             X_train=bundle['X_train'],
                             y_train=bundle['y_train_binaria'],
                             SEED=config.SEEDS[0],
