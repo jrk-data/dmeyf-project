@@ -28,7 +28,9 @@ def _resumen_table_name(resumen_csv_name: str) -> str:
 
 
 def train_model(study, X_train, y_train, weights, k,
-                experimento, save_root, seeds, logger):
+                base_study_name: str,
+                mes,
+                save_root, seeds, logger):
 
     if isinstance(X_train, pl.DataFrame):
         X_train = X_train.to_pandas()
@@ -50,8 +52,11 @@ def train_model(study, X_train, y_train, weights, k,
     train_data = lgb.Dataset(X_train, label=y_train, weight=weights)
 
     # PATH DE MODELOS: por experimento/mes
-    save_dir = Path(save_root) / str(experimento)
+    save_dir = Path(save_root) / str(base_study_name) / str(mes)
     save_dir.mkdir(parents=True, exist_ok=True)
+
+    # Id lógico para tablas/resumenes
+    experimento_key = f"{base_study_name}_{mes}"
 
     # Seteo parámetros fijos
     final_params = {
@@ -64,8 +69,6 @@ def train_model(study, X_train, y_train, weights, k,
         'n_jobs': -1      # Para usar todos los cores
     }
 
-    # itero el top de los modelos y guardo la posición en el top y el objeto trial
-    experimento = config.STUDY_NAME_OPTUNA
 
     # array para guardar resumen de modelos y guardar metadata
     resumen_rows= list()
@@ -126,37 +129,21 @@ def train_model(study, X_train, y_train, weights, k,
 
     logger.info(f"Modelos entrenados y guardados en {save_dir}")
     meta = pd.DataFrame(resumen_rows)
-    TABLE_NAME = f"{experimento}_train"  # Definimos el nombre de la tabla una vez
+    TABLE_NAME = f"{base_study_name}_train"   # antes: f"{experimento}_train"
 
     try:
-        # 1. Usamos 'with' para asegurar el cierre automático de la conexión
         with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
-
-            # 2. Ejecutamos la creación e inserción secuencialmente.
-            #    'CREATE TABLE IF NOT EXISTS' maneja el caso de tabla ya existente.
-
-            # Crear la tabla a partir del esquema de 'meta' si no existe
             con.execute(f"CREATE TABLE IF NOT EXISTS {TABLE_NAME} AS SELECT * FROM meta WHERE 1=0;")
-            logger.info(f"Tabla '{TABLE_NAME}' asegurada (creada si no existía).")
-
             try:
-                q_alter = 'ALTER TABLE lgb_optimization_exp1_train ADD PRIMARY KEY ("model_path");'
-                con.sql(q_alter)
+                con.sql(f'ALTER TABLE {TABLE_NAME} ADD PRIMARY KEY ("model_path");')
             except:
                 pass
-
-            # Insertar los datos del DataFrame 'meta' en la tabla
             con.execute(f"""INSERT INTO {TABLE_NAME} SELECT * FROM meta ON CONFLICT (model_path) DO NOTHING;""")
             logger.info(f"Datos insertados en la tabla '{TABLE_NAME}'.")
-
-            # La conexión se cierra automáticamente aquí.
-
-    # 3. Bloque 'except' para capturar cualquier error (conexión, creación, inserción)
     except Exception as e:
-        # Mejor manejo de errores: captura cualquier excepción y loguea el error real.
         logger.error(f"Error al procesar la base de datos DuckDB para la tabla '{TABLE_NAME}': {e}")
-        # Opcional: puedes re-lanzar el error si quieres que el programa se detenga
-        # raise e
+
+    return meta
 
 
 
@@ -175,11 +162,9 @@ def train_model(study, X_train, y_train, weights, k,
 
 
 
-def calculo_curvas_ganancia(Xif,
-                            y_test_class,
-                            dir_model_opt,
-                            resumen_csv_name: str = "resumen_ganancias_modelos.csv",
-                            ):
+def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
+                            experimento_key: str,
+                            resumen_csv_name: str = "resumen_ganancias.csv"):
     piso_envios = 4000
     techo_envios = 20000  # exclusivo
 
@@ -303,7 +288,7 @@ def calculo_curvas_ganancia(Xif,
 
         # Para el CSV resumen
         resumen_rows.append({
-            "experimento": dir_model_opt.name,  # ej: STUDY_NAME_OPTUNA_202003
+            "experimento": experimento_key,  # <--- antes era dir_model_opt.name
             "modelo": nombre,
             "k_opt": int(k_mejor),
             "ganancia_max": float(ganancia_max),
@@ -441,7 +426,7 @@ def pred_ensamble_modelos(
     experimento: str,            # p.ej. "STUDY_NAME_OPTUNA_202003"
     k: int,
     output_path,
-    resumen_csv_name: str = "resumen_ganancias_modelos.csv"
+    resumen_csv_name: str = "resumen_ganancias.csv"
 ) -> pd.DataFrame:
     """
     Ensambla las predicciones de los top-k modelos (por 'ganancia_max')

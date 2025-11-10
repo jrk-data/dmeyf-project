@@ -4,7 +4,7 @@
 # CONFIG Local
 
 experiment:
-  STUDY_NAME_OPTUNA: "test_2_202008_202010_pred_202011_undersampling_cv"
+  STUDY_NAME_OPTUNA: "exp_meses_baseline_201901_202102"
 
 
 # BIG QUERY DATOS
@@ -47,6 +47,7 @@ optimization:
   # Numero de modelos que agarro de la optimizacion hiperparámetros para entrenar
   TOP_K_MODEL: 5
 
+
 preprocessing:
   SUB_SAMPLE: 0.2
 
@@ -56,7 +57,7 @@ flags:
   NUEVA_BASE: False
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   START_POINT: "PREDICT"
-  RUN_OPTIMIZATION: False
+  RUN_OPTIMIZATION: True
   RUN_CALC_CURVAS: True
 
 # ------------------------------------------------------------------
@@ -87,14 +88,14 @@ competencia02:
   BQ_TABLE_TARGETS: "targets"
   BQ_TABLE_FEATURES: "features"
 
-  # 201901,201902,201903,201904,201905,201906,201907,
-  #                201908,201909,201910,201911,201912,202001,202002,
-  #                202003,202004,202005,202006, 202007, 202008, 202009,
-  #                202010, 202011, 202012, 202101,202102,202103
-  MONTH_TRAIN: [202008 ]
+
+  MONTH_TRAIN: [   201901,201902,201903,201904,201905,201906,201907,
+                  201908,201909,201910,201911,201912,202001,202002,
+                  202003,202004,202005,202006, 202007, 202008, 202009,
+                  202010, 202011, 202012, 202101,202102 ]
   MONTH_VALIDATION: [ 202010 ]
-  MONTH_TEST: [ 202010 ]
-  MONTH_PRED: [ 202011 ]
+  MONTH_TEST: [ 202104]
+  MONTH_PRED: [ 202106 ]
 
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000

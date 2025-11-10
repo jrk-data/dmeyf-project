@@ -106,9 +106,9 @@ def main():
             creation_deltas(numeric_cols, 5)
 
             # Binarizando target
-        logger.info("Binarizando target...")
-        table_with_deltas = 'c02_delta'
-        create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
+            logger.info("Binarizando target...")
+            table_with_deltas = 'c02_delta'
+            create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
 
         # Meses a usar
         meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
@@ -234,6 +234,8 @@ def main():
                         y_train=bundle['y_train_binaria'],
                         weights=bundle['w_train'],
                         k=top_k_model,
+                        base_study_name=base_study_name,  # <--- nuevo
+                        mes=str(mes),
                         experimento=study_name,
                         save_root=models_root,
                         seeds=config.SEEDS,
@@ -241,11 +243,12 @@ def main():
                     )
 
                     logger.info(f"[{study_name}] Calculando curvas de ganancia...")
-                    models_dir = str(Path(models_root) / base_study_name / mes)
+                    models_dir_mes = Path(models_root) / base_study_name / str(mes)
                     y_predicciones, curvas, mejores_cortes_normalizado = calculo_curvas_ganancia(
                         Xif=bundle['X_test'],
                         y_test_class=bundle['y_test_class'],
-                        dir_model_opt=models_dir,
+                        dir_model_opt=str(models_dir_mes),
+                        experimento_key=study_name,
                         resumen_csv_name="resumen_ganancias.csv",
                     )
                     logger.info(f"[{study_name}] mejores cortes: {mejores_cortes_normalizado}")
@@ -255,15 +258,15 @@ def main():
         # ---------------------------------------------------------------------------------
         if config.START_POINT == 'PREDICT':
             mes_ref = max(meses_train_separados.keys())
-            experimento = f"{config.STUDY_NAME_OPTUNA}_{mes_ref}"
-            models_dir = Path(config.DIR_MODELS) / experimento
+            experimento = f"{base_study_name}_{mes_ref}"
+            models_dir = Path(config.DIR_MODELS) / base_study_name / str(mes_ref)
 
             _df_pred = pred_ensamble_modelos(
                 Xif=meses_train_separados[mes_ref]['X_pred'],
                 dir_model_opt=str(models_dir),
+                experimento=experimento,
                 output_path=config.OUTPUT_PATH,
                 resumen_csv_name="resumen_ganancias.csv",
-                experimento=experimento,
                 k=6
             )
 
