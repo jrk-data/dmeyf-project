@@ -56,7 +56,7 @@ flags:
   NUEVA_BASE: False
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   START_POINT: "PREDICT"
-  RUN_OPTIMIZATION: True
+  RUN_OPTIMIZATION: False
   RUN_CALC_CURVAS: True
 
 # ------------------------------------------------------------------
