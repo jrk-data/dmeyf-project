@@ -58,6 +58,7 @@ flags:
   START_POINT: "PREDICT"
   RUN_OPTIMIZATION: False
   RUN_CALC_CURVAS: True
+
 # ------------------------------------------------------------------
 
 seeds:
