@@ -457,7 +457,6 @@ def pred_ensamble_modelos(
 
     # 🔧 Arreglo clave:
     Xif = _coerce_object_cols(Xif)
-
     # ----- Arreglando tipos de datos -----
 
     # ===== 1) Top-K modelos desde DuckDB, filtrando por experimento =====
