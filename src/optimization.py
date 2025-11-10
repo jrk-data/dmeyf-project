@@ -275,10 +275,25 @@ def run_study_cv(X_train, y_train, SEED,w_train, matching_categorical_features: 
     #study.optimize(objective(SEED,X_train, y_train,w_train, w_train, None), n_trials=N_TRIALS, show_progress_bar=True)
 
     if optimizar == True:
-        study.optimize(
-            objective,
-            n_trials=N_TRIALS,
-            show_progress_bar=True
-        )
+
+        n_trials_realizados = len(study.trials)
+        logger.info(f"Trials ya realizados: {n_trials_realizados}")
+
+        # Bloque para controlar la cantidad de trials que se realizan por mes
+        if n_trials_realizados >= N_TRIALS:
+            logger.info("Ya hay 20 o más trials. No se ejecuta nada nuevo.")
+            pass
+
+        # Si hay menos de 20, correr los que faltan
+        else:
+            n_trials_faltantes = N_TRIALS - n_trials_realizados
+            print(f"Ejecutando {n_trials_faltantes} trials adicionales para llegar a 20.")
+
+
+            study.optimize(
+                objective,
+                n_trials=n_trials_faltantes,
+                show_progress_bar=True
+            )
 
     return study
