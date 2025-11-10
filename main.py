@@ -241,7 +241,7 @@ def main():
                     )
 
                     logger.info(f"[{study_name}] Calculando curvas de ganancia...")
-                    models_dir = str(Path(models_root) / study_name)
+                    models_dir = str(Path(models_root) / base_study_name / mes)
                     y_predicciones, curvas, mejores_cortes_normalizado = calculo_curvas_ganancia(
                         Xif=bundle['X_test'],
                         y_test_class=bundle['y_test_class'],
