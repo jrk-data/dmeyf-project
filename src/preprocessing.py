@@ -40,7 +40,7 @@ def create_binary_target_column(project, dataset, table):
     alter_query = f"""
     ALTER TABLE `{table_id}`
     ADD COLUMN IF NOT EXISTS clase_binaria INT64,
-    ADD COLUMN IF NOT EXISTS clase_peso FLOAT64,
+    ADD COLUMN IF NOT EXISTS clase_peso FLOAT64
 ;
     """
     client.query(alter_query).result()
