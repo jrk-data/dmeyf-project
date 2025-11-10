@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import polars as pl
 import lightgbm as lgb
 from pathlib import Path
 import json
@@ -10,6 +11,8 @@ import numpy as np
 from datetime import datetime
 from lightgbm.basic import LightGBMError
 import duckdb
+from src.utils import _coerce_object_cols
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +29,12 @@ def _resumen_table_name(resumen_csv_name: str) -> str:
 
 def train_model(study, X_train, y_train, weights, k,
                 experimento, save_root, seeds, logger):
+
+    if isinstance(X_train, pl.DataFrame):
+        X_train = X_train.to_pandas()
+
+    # 🔧 Arreglo clave:
+    X_train = _coerce_object_cols(X_train)
 
     # Seleccionar top-k trials según 'value'
     df_trials = study.trials_dataframe()
