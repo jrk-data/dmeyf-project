@@ -250,6 +250,15 @@ def calculo_curvas_ganancia(Xif,
     ganancia = np.where(y_test_class == "BAJA+2", config.GANANCIA_ACIERTO, 0) - \
                np.where(y_test_class != "BAJA+2", config.COSTO_ESTIMULO, 0)
 
+    # ----- Arreglando tipos de datos -----
+    if isinstance(Xif, pl.DataFrame):
+        Xif = Xif.to_pandas()
+
+    # 🔧 Arreglo clave:
+    Xif = _coerce_object_cols(Xif)
+
+    # ----- Arreglando tipos de datos -----
+
     for model_file in modelos_validos:
         model = lgb.Booster(model_file=f"{model_file}")
 
