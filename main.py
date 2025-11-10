@@ -106,9 +106,9 @@ def main():
             creation_deltas(numeric_cols, 5)
 
             # Binarizando target
-            logger.info("Binarizando target...")
-            table_with_deltas = 'c02_delta'
-            create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
+        logger.info("Binarizando target...")
+        table_with_deltas = 'c02_delta'
+        create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
 
         # Meses a usar
         meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED

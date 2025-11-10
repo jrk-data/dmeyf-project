@@ -39,7 +39,9 @@ def create_binary_target_column(project, dataset, table):
     # 1️⃣ Crear la columna si no existe
     alter_query = f"""
     ALTER TABLE `{table_id}`
-    ADD COLUMN IF NOT EXISTS clase_binaria INT64;
+    ADD COLUMN IF NOT EXISTS clase_binaria INT64,
+    ADD COLUMN IF NOT EXISTS clase_peso FLOAT64,
+;
     """
     client.query(alter_query).result()
 
@@ -50,7 +52,13 @@ def create_binary_target_column(project, dataset, table):
         WHEN clase_ternaria IN ('BAJA+1', 'BAJA+2') THEN 1
         WHEN clase_ternaria = 'CONTINUA' THEN 0
         ELSE NULL
-    END
+    END,
+    clase_peso = CASE
+        WHEN clase_ternaria = 'BAJA+2' THEN 1.00002
+        WHEN clase_ternaria = 'BAJA+1' THEN 1.00001
+        WHEN clase_ternaria = 'CONTINUA' THEN 1.0
+        ELSE NULL
+      END
     WHERE clase_ternaria IS NOT NULL;
     """
 
