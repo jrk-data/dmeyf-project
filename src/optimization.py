@@ -247,11 +247,11 @@ def run_study_cv(X_train, y_train, SEED,w_train, matching_categorical_features: 
         cv_results = lgb.cv(
             params,
             train_data,
-            num_boost_round=400,  # modificar, subit y subir... y descomentar la línea inferior
+            num_boost_round=1000,  # modificar, subit y subir... y descomentar la línea inferior
             # early_stopping_rounds= int(50 + 5 / learning_rate),
             feval=lgb_gan_eval,
             stratified=True,
-            nfold=5,
+            nfold= config.NFOLD,
             seed=SEED,
             callbacks=[early_stopping(stopping_rounds=int(50 + 5 / learning_rate), verbose=False)
                        ]
@@ -262,7 +262,7 @@ def run_study_cv(X_train, y_train, SEED,w_train, matching_categorical_features: 
         # Guardamos cual es la mejor iteración del modelo
         trial.set_user_attr("best_iter", best_iter)
 
-        return max_gan * 5
+        return max_gan * config.NFOLD
 
     sampler = optuna.samplers.TPESampler(seed=config.SEED, n_startup_trials=N_STARTUP_TRIALS)
     study = optuna.create_study(
