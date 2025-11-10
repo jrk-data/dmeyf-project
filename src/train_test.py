@@ -451,6 +451,15 @@ def pred_ensamble_modelos(
     base_dir = Path(dir_model_opt)
     base_dir.mkdir(parents=True, exist_ok=True)
 
+    # ----- Arreglando tipos de datos -----
+    if isinstance(Xif, pl.DataFrame):
+        Xif = Xif.to_pandas()
+
+    # 🔧 Arreglo clave:
+    Xif = _coerce_object_cols(Xif)
+
+    # ----- Arreglando tipos de datos -----
+
     # ===== 1) Top-K modelos desde DuckDB, filtrando por experimento =====
     with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
         table_resumen = _resumen_table_name(resumen_csv_name)
