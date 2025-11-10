@@ -4,7 +4,7 @@
 # CONFIG Local
 
 experiment:
-  STUDY_NAME_OPTUNA: "test_lgb_train_202008-test_202010-pred_202011-undersampling_cv"
+  STUDY_NAME_OPTUNA: "test_2_202008_202010_pred_202011_undersampling_cv"
 
 
 # BIG QUERY DATOS
@@ -56,7 +56,7 @@ flags:
   NUEVA_BASE: False
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   START_POINT: "PREDICT"
-  RUN_OPTIMIZATION: False
+  RUN_OPTIMIZATION: True
   RUN_CALC_CURVAS: True
 
 # ------------------------------------------------------------------
@@ -99,5 +99,5 @@ competencia02:
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
 
-  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
+  TARGET: "clase_ternaria_binaria"           # ajustá al nombre real en tu CSV
   ID_COL: "numero_de_cliente"
