@@ -36,11 +36,15 @@ def select_c02_polars(path_csv_competencia_2):
         raise
     try:
         # Leo todo el csv con el schema que le paso a polars
-        df = pl.read_csv(
-            path_csv_competencia_2,
-            schema_overrides=schema_modificado,
-            infer_schema_length=0  # desactiva inferencia de tipos
+        df = (
+            pl.read_csv(
+                path_csv_competencia_2,
+                schema_overrides=schema_modificado,
+                infer_schema_length=0  # desactiva inferencia de tipos
+            )
+            .filter(~pl.col("foto_mes").is_in([201905, 201910, 202006]))
         )
+
         return df
 
     except Exception as e:

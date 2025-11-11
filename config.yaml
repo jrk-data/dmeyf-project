@@ -4,7 +4,7 @@
 # CONFIG Local
 
 experiment:
-  STUDY_NAME_OPTUNA: "exp_meses_baseline_201901_202102"
+  STUDY_NAME_OPTUNA: "experimento_estacional_01
 
 
 # BIG QUERY DATOS
@@ -41,7 +41,7 @@ vm:
 optimization:
   N_TRIALS: 20                                  # 20 warmup + 30 bayesianos
   N_STARTUP_TRIALS: 20
-  NFOLD: 10
+  NFOLD: 5
   EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
   N_BOOSTS: 1000
   # Numero de modelos que agarro de la optimizacion hiperparámetros para entrenar
@@ -49,12 +49,12 @@ optimization:
 
 
 preprocessing:
-  SUB_SAMPLE: 0.2
+  SUB_SAMPLE: 0.4
 
 # ------------------------------------------------------------------
 flags:
   # NUEVA VARIABLE PARA CONTROL DE FLUJO
-  NUEVA_BASE: False
+  NUEVA_BASE: True
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   START_POINT: "PREDICT"
   RUN_OPTIMIZATION: True
@@ -89,11 +89,13 @@ competencia02:
   BQ_TABLE_FEATURES: "features"
 
 
-  MONTH_TRAIN: [   201901,201902,201903,201904,201905,201906,201907,
-                  201908,201909,201910,201911,201912,202001,202002,
-                  202003,202004,202005,202006, 202007, 202008, 202009,
-                  202010, 202011, 202012, 202101,202102 ]
-  MONTH_VALIDATION: [ 202010 ]
+#  MONTH_TRAIN: [   201901,201902,201903,201904,201905,201906,201907,
+#                  201908,201909,201910,201911,201912,202001,202002,
+#                  202003,202004,202005,202006, 202007, 202008, 202009,
+#                  202010, 202011, 202012, 202101,202102 ]
+  MONTH_TRAIN: [   201901,201902,202001,202002 ,202101,202102 ]
+
+  MONTH_VALIDATION: [ 202102 ]
   MONTH_TEST: [ 202104]
   MONTH_PRED: [ 202106 ]
 
