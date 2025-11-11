@@ -54,11 +54,11 @@ preprocessing:
 # ------------------------------------------------------------------
 flags:
   # NUEVA VARIABLE PARA CONTROL DE FLUJO
-  NUEVA_BASE: True
+  NUEVA_BASE: False
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   START_POINT: "PREDICT"
-  RUN_OPTIMIZATION: True
-  RUN_CALC_CURVAS: True
+  RUN_OPTIMIZATION: False
+  RUN_CALC_CURVAS: False
 
 # ------------------------------------------------------------------
 
@@ -93,7 +93,7 @@ competencia02:
 
   MONTH_VALIDATION: [ 202102 ]
   MONTH_TEST: [ 202104]
-  MONTH_PRED: [ 202106 ]
+  MONTH_PRED: [ 202104 ]
 
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
