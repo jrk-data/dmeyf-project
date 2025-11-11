@@ -236,7 +236,7 @@ def main():
                         k=top_k_model,
                         base_study_name=base_study_name,  # <--- nuevo
                         mes=str(mes),
-                        experimento=study_name,
+                        #experimento=study_name,
                         save_root=models_root,
                         seeds=config.SEEDS,
                         logger=logger,
