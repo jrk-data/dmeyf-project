@@ -136,14 +136,17 @@ def main():
 
             logger.info(f"Splitting data for mes {mes_train}...")
             # selecciono mes prediccion
+            mes_test = config.TEST_BY_TRAIN.get(str(mes_train), None)
+            if mes_test is None:
+                mes_test = config.MES_TEST  # mantiene compatibilidad (puede ser lista o int)
 
             table_with_deltas = 'c02_delta'
             # paso mes predicción al select
-            data = select_data_lags_deltas(table_with_deltas,mes_train,config.MES_TEST,config.MES_PRED,k=config.NUN_WINDOW)
+            data = select_data_lags_deltas(table_with_deltas,mes_train,mes_test,config.MES_PRED,k=config.NUN_WINDOW)
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"Inicio de split_train_data")
             resp = split_train_data(
-                data, mes_train, config.MES_TEST, config.MES_PRED, config.SEED , config.SUB_SAMPLE
+                data, mes_train, mes_test, config.MES_PRED, config.SEED , config.SUB_SAMPLE
             )
             logger.info(f"Fin de split_train_data")
 
@@ -240,18 +243,72 @@ def main():
         # 5. PREDICCIÓN FINAL / ENSEMBLE
         # ---------------------------------------------------------------------------------
         if config.START_POINT == 'PREDICT':
-            mes_ref = max(meses_train_separados.keys())
-            experimento = f"{base_study_name}_{mes_ref}"
-            models_dir = Path(config.DIR_MODELS) / base_study_name / str(mes_ref)
+            scenarios = getattr(config, "PREDICT_SCENARIOS", [])
+            if not scenarios:
 
-            _df_pred = pred_ensamble_modelos(
-                Xif=meses_train_separados[mes_ref]['X_pred'],
-                dir_model_opt=str(models_dir),
-                experimento=experimento,
-                output_path=config.OUTPUT_PATH,
-                resumen_csv_name="resumen_ganancias.csv",
-                k=6
-            )
+                mes_ref = max(meses_train_separados.keys())
+                experimento = f"{base_study_name}_{mes_ref}"
+                models_dir = Path(config.DIR_MODELS) / base_study_name / str(mes_ref)
+
+                _df_pred = pred_ensamble_modelos(
+                    Xif=meses_train_separados[mes_ref]['X_pred'],
+                    dir_model_opt=str(models_dir),
+                    experimento=experimento,
+                    output_path=config.OUTPUT_PATH,
+                    resumen_csv_name="resumen_ganancias.csv",
+                    k=6
+                )
+            else:
+                logger.info("Se recorren los escenarios de entrenamiento")
+                for sc in scenarios:
+                    logger.info(f"Escenario: {sc}")
+                    name = sc["name"]
+                    pred_month = sc["pred_month"]
+                    groups = sc["train_for_pred"]  # lista de dicts con use_experiments_from
+
+                    logger.info(f"[PREDICT] Ejecutando escenario: {name} -> pred_month={pred_month}")
+
+                    # 1) Construir X_pred del mes objetivo (explícito y consistente)
+                    table_with_deltas = 'c02_delta'
+                    data_pred = select_data_lags_deltas(
+                        table_with_deltas,
+                        pred_month,  # MES_TRAIN (no se usa para entrenar acá, pero mantiene firma)
+                        pred_month,  # MES_TEST (dummy para pred)
+                        pred_month,  # MES_PRED (el que importa de verdad)
+                        k=config.NUN_WINDOW
+                    )
+                    resp_pred = split_train_data(
+                        data_pred,
+                        MES_TRAIN=[pred_month],  # pasarlo como lista
+                        MES_TEST=[pred_month],
+                        MES_PRED=[pred_month],
+                        SEED=config.SEED,
+                        SUB_SAMPLE=config.SUB_SAMPLE
+                    )
+                    # OJO: convertir a pandas, es lo que esperan los boosters
+                    X_pred = resp_pred["X_pred_pl"].to_pandas()
+
+                    # 2) Armar lista de (dir_model_opt, experimento) a ensamblear
+                    exp_list = []
+                    for g in groups:
+                        # train_month = g["train_month"]  # no lo uso por ahora
+                        for src_mes in g["use_experiments_from"]:  # p.ej. 201901 y 202001
+                            experimento = f"{base_study_name}_{src_mes}"
+                            dir_model_opt = Path(config.DIR_MODELS) / base_study_name / str(src_mes)
+                            exp_list.append({"dir": str(dir_model_opt), "experimento": experimento})
+
+                    # 3) Ensamble multi-experimento con Top-K por experimento
+                    from src.train_test import pred_ensamble_desde_experimentos
+                    _ = pred_ensamble_desde_experimentos(
+                        Xif=X_pred,
+                        experiments=exp_list,
+                        k=config.TOP_K_MODEL,  # k por experimento
+                        output_path=config.OUTPUT_PATH,
+                        output_basename=f"{name}_{pred_month}",
+                        resumen_csv_name="resumen_ganancias.csv"
+                    )
+
+
 
     except Exception as e:
         logger.error(f"Se cortó ejecución por un error:\n {e}")

@@ -545,3 +545,88 @@ def pred_ensamble_modelos(
     logger.info(f"[{experimento}] Ensemble guardado en {out_csv} (clientes={len(df_final_out)})")
 
     return df_final_out
+
+def pred_ensamble_desde_experimentos(
+    Xif: pd.DataFrame,
+    experiments: list[dict],   # [{"dir": ".../models/.../201901", "experimento": "exp_201901"}, ...]
+    k: int,
+    output_path,
+    output_basename: str,
+    resumen_csv_name: str = "resumen_ganancias.csv"
+) -> pd.DataFrame:
+
+    # Normalización de tipos (igual que en pred_ensamble_modelos)
+    if isinstance(Xif, pl.DataFrame):
+        Xif = Xif.to_pandas()
+    Xif = _coerce_object_cols(Xif)
+
+    votos = []
+    with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
+        table_resumen = _resumen_table_name(resumen_csv_name)
+
+        for item in experiments:
+            base_dir = Path(item["dir"])
+            experimento = item["experimento"]
+
+            q = f"""
+                SELECT modelo, thr_opt, ganancia_max
+                FROM {table_resumen}
+                WHERE experimento = ?
+                ORDER BY ganancia_max DESC
+                LIMIT {int(k)};
+            """
+            df_top_k = con.execute(q, [experimento]).df()
+            if df_top_k.empty:
+                logger.warning(f"[{experimento}] sin modelos en {table_resumen}")
+                continue
+
+            for _, row in df_top_k.iterrows():
+                modelo = str(row['modelo'])
+                thr_opt = float(row['thr_opt'])
+
+                model_path = base_dir / modelo
+                if not model_path.suffix:
+                    cand_txt = model_path.with_suffix('.txt')
+                    cand_bin = model_path.with_suffix('.bin')
+                    if cand_txt.exists():
+                        model_path = cand_txt
+                    elif cand_bin.exists():
+                        model_path = cand_bin
+
+                if not model_path.exists():
+                    logger.error(f"[{experimento}] Modelo no encontrado: {model_path}")
+                    continue
+
+                booster = lgb.Booster(model_file=str(model_path))
+                feature_names = booster.feature_name()
+                y_pred_prob = booster.predict(Xif[feature_names])
+
+                df_voto = Xif[['numero_de_cliente', 'foto_mes']].copy()
+                df_voto[f'voto_{experimento}_{Path(modelo).stem}'] = (y_pred_prob >= thr_opt).astype(int)
+                votos.append(df_voto)
+
+    if not votos:
+        logger.error("No se generaron votos. Devuelvo vacío.")
+        return pd.DataFrame(columns=['numero_de_cliente', 'Predicted'])
+
+    df_final = votos[0]
+    for df_pred in votos[1:]:
+        df_final = df_final.merge(df_pred, on=['numero_de_cliente', 'foto_mes'], how='left')
+
+    voto_cols = [c for c in df_final.columns if c.startswith('voto_')]
+    df_final[voto_cols] = df_final[voto_cols].fillna(0).astype(int)
+
+    n_modelos = len(voto_cols)
+    umbral_mayoria = n_modelos / 2.0
+
+    df_final['votos_positivos'] = df_final[voto_cols].sum(axis=1)
+    df_final['Predicted'] = (df_final['votos_positivos'] > umbral_mayoria).astype(int)
+
+    out_dir = Path(output_path)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_csv = out_dir / f"{output_basename}.csv"
+    df_out = df_final[['numero_de_cliente', 'Predicted']].drop_duplicates('numero_de_cliente', keep='last')
+    df_out.to_csv(out_csv, index=False)
+    logger.info(f"[{output_basename}] Ensemble multi-experimento guardado en {out_csv} (clientes={len(df_out)})")
+
+    return df_out

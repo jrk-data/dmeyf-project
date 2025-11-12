@@ -38,6 +38,9 @@ try:
     STUDY_NAME = exp.get("STUDY_NAME", "default_study")
     STUDY_NAME_OPTUNA = exp.get("STUDY_NAME_OPTUNA",None)
 
+    TEST_BY_TRAIN = exp.get("TEST_BY_TRAIN", {})  # dict[str->int]
+    PREDICT_SCENARIOS = exp.get("PREDICT_SCENARIOS", [])  # list[dict]
+
     # ---- Optimization ----
     N_TRIALS = int(opt.get("N_TRIALS", 50))
     N_STARTUP_TRIALS = int(opt.get("N_STARTUP_TRIALS", 20))
