@@ -2,7 +2,7 @@ from typing import Iterable, Union
 import numpy as np
 import polars as pl
 from google.cloud import bigquery
-
+import src.config as config
 from logging import getLogger
 
 
@@ -111,7 +111,7 @@ def split_train_data(
     MES_TRAIN: Union[int, Iterable[int]],
     MES_TEST: Union[int, Iterable[int]],
     MES_PRED: Union[int, Iterable[int]],
-    SEED : SEED,
+    SEED,
     SUB_SAMPLE: float = None,
 
 ) -> dict:
