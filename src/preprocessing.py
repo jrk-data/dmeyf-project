@@ -111,10 +111,11 @@ def split_train_data(
     MES_TRAIN: Union[int, Iterable[int]],
     MES_TEST: Union[int, Iterable[int]],
     MES_PRED: Union[int, Iterable[int]],
-    SEMILLA: int,
     SUB_SAMPLE: float = None
 
 ) -> dict:
+    semilla = config.SEED
+
     logger.info("Dividiendo datos en train / test / pred...")
 
     # Normalizo a listas de int
@@ -133,7 +134,7 @@ def split_train_data(
 
     # Hago subsampleo
     if SUB_SAMPLE is not None:
-        train_data=_undersampling(train_data , SUB_SAMPLE,SEMILLA)
+        train_data=_undersampling(train_data , SUB_SAMPLE, semilla)
 
     columns_drop = ["clase_ternaria", "clase_peso","clase_binaria", "clase_binaria1", "clase_binaria2"]
     logger.info(f"Dropeando (si existen): {columns_drop}")

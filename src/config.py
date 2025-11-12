@@ -47,6 +47,8 @@ try:
     # --- Preprocessing ----
 
     SUB_SAMPLE = pr.get("SUB_SAMPLE", None) # si es None, no se hace sub-sampling
+    NUN_WINDOW_LOAD = pr.get("NUN_WINDOW_LOAD", 5)
+    NUN_WINDOW =  pr.get("NUN_WINDOW", 3)
 
     # --- Flags ----
     # Busca la variable optimizar, por defecto queda en False
@@ -68,6 +70,8 @@ try:
     MES_PRED = _cfg2.get("MONTH_PRED", [202105])
     TARGET = _cfg2.get("TARGET", "target")
     ID_COL = _cfg2.get("ID_COL", "id")
+
+    MONTHS_DROP_LOAD = _cfg2.get("MONTHS_DROP_LOAD", [202006])
 
     GANANCIA_ACIERTO = _cfg.get("GANANCIA_ACIERTO", None)
     COSTO_ESTIMULO = _cfg.get("COSTO_ESTIMULO", None)

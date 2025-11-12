@@ -42,7 +42,7 @@ def select_c02_polars(path_csv_competencia_2):
                 schema_overrides=schema_modificado,
                 infer_schema_length=0  # desactiva inferencia de tipos
             )
-            .filter(~pl.col("foto_mes").is_in([201905, 201910, 202006]))
+            .filter(~pl.col("foto_mes").is_in(config.MONTHS_DROP_LOAD))
         )
 
         return df
@@ -55,7 +55,7 @@ def create_bq_table_c02(df, PROJECT, DATASET, TABLE):
     Esta función crea una tabla en BigQuery a partir de un DataFrame de Polars.
        '''
     TABLE_ID = f"{PROJECT}.{DATASET}.{TABLE}"
-
+    logger.info(f"Creando tabla {TABLE} en BigQuery...")
     # df_pl es tu DataFrame de Polars ya procesado
     # df_pl: pl.DataFrame = ...
 
@@ -85,12 +85,13 @@ def create_bq_table_c02(df, PROJECT, DATASET, TABLE):
     load_job = client.load_table_from_dataframe(df_pd, TABLE_ID, job_config=job_config)
     load_job.result()  # espera a que termine
 
+    logger.info(f"Carga de tabla {TABLE} completada.")
     #tbl = client.get_table(TABLE_ID)
 
     #return tbl
 
 def create_targets_c02(PROJECT, DATASET, TABLE, TARGET_TABLE):
-    logger.info("Creando tabla de clases ternarias...")
+    logger.info(f"Creando tabla de {TARGET_TABLE}...")
     try:
         client = bigquery.Client(project=PROJECT)
         query = f"""
@@ -159,14 +160,20 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         table = client.get_table(table_ref)
 
         # Detectar columnas con "master" (case-insensitive)
+        logger.info("Detectando columnas con Master...")
         cols_master = [f.name for f in table.schema if "master" in f.name.lower()]
+        logger.info("Detectando columnas con Visa...")
         cols_visa = [f.name for f in table.schema if "visa" in f.name.lower()]
+
+        logger.info("Detectando resto de columnas...")
+
         cols_general = [
             f.name for f in table.schema
             if "visa" not in f.name.lower()
                and "master" not in f.name.lower()
                and f.name not in ("numero_de_cliente", "foto_mes", "clase_ternaria")
         ]
+
 
         # Construir la expresión SQL
         expr_sum_master = " + ".join(
@@ -187,7 +194,7 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         )
 
         FEATURE_TABLE = "q_productos_por_cliente_mes"
-
+        logger.info(f"Creando tabla de {FEATURE_TABLE}...")
         query = f"""
         CREATE OR REPLACE TABLE `{PROJECT}.{DATASET}.{FEATURE_TABLE}`
         PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
@@ -209,7 +216,7 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         ;
         """
         client.query(query)
-        logger.info("Se ha creado la tabla de c02_products")
+        logger.info(f"Se ha creado la tabla de {FEATURE_TABLE}")
     except Exception as e:
         logger.error(e)
 

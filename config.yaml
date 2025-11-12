@@ -50,7 +50,8 @@ optimization:
 
 preprocessing:
   SUB_SAMPLE: 0.4
-
+  NUN_WINDOW_LOAD: 5
+  NUN_WINDOW: 3
 # ------------------------------------------------------------------
 flags:
   # NUEVA VARIABLE PARA CONTROL DE FLUJO
@@ -67,27 +68,15 @@ seeds:
   SEED: 51123478 # SEED para fijar randomizaciones
 
 
-competencia01:
-  MONTH_TRAIN: [202102,202103]
-  MONTH_VALIDATION: [202103]
-  MONTH_TEST: [202104]
-  MONTH_PRED: [202106]
-
-  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
-  ID_COL: "numero_de_cliente"
-
-  # negocio (por si luego cambias a métrica custom de ganancia)
-  GANANCIA_ACIERTO: 780000
-  COSTO_ESTIMULO: 20000
 
 competencia02:
 
+  MONTHS_DROP_LOAD : [201905, 201910, 202006]
   BQ_PROJECT: "dmecoyfin-250928192534125"
   BQ_DATASET: "dmeyf"
   BQ_TABLE: "c02"
   BQ_TABLE_TARGETS: "targets"
   BQ_TABLE_FEATURES: "features"
-
 
   MONTH_TRAIN: [   201901,201902,202001,202002 ,202101 ]
 
@@ -100,3 +89,18 @@ competencia02:
 
   TARGET: "clase_ternaria_binaria"           # ajustá al nombre real en tu CSV
   ID_COL: "numero_de_cliente"
+
+
+
+competencia01:
+  MONTH_TRAIN: [202102,202103]
+  MONTH_VALIDATION: [202103]
+  MONTH_TEST: [202104]
+  MONTH_PRED: [202106]
+
+  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
+  ID_COL: "numero_de_cliente"
+
+  # negocio (por si luego cambias a métrica custom de ganancia)
+  GANANCIA_ACIERTO: 780000
+  COSTO_ESTIMULO: 20000

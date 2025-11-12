@@ -100,30 +100,22 @@ def main():
             numeric_cols = get_numeric_columns_pl(data, exclude_cols=exclude_cols)
 
             # Creo tabla con lags
-            creation_lags(numeric_cols, 5)
+            logger.info(f"Creando lags n= {config.NUN_VENTANA}...")
+            creation_lags(numeric_cols, config.NUN_WINDOW_LOAD)
 
             # Creo tabla con deltas
-            creation_deltas(numeric_cols, 5)
+            logger.info("Creando deltas...")
+            creation_deltas(numeric_cols, config.NUN_WINDOW_LOAD)
 
             # Binarizando target
             logger.info("Binarizando target...")
             table_with_deltas = 'c02_delta'
             create_binary_target_column(config.BQ_PROJECT,config.BQ_DATASET,table_with_deltas)
 
-        # Meses a usar
-        meses = config.MES_TRAIN + config.MES_TEST + config.MES_PRED
-
-        table_with_deltas = 'c02_delta'
-
-
-        # Binarizar target
-
-
         # Selecciono los datos de los meses que se van a trabajar
         #data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas, meses)
-
-        logger.info("Usando base de datos existente...")
-        logger.info("Cargando dataset...")
+        else:
+            logger.info("Usando base de datos existente...")
 
 
         # ---------------------------------------------------------------------------------
@@ -133,16 +125,7 @@ def main():
         if config.START_POINT in ['FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT']:
             logger.info("#### INICIO FEATURE ENGINEERING ###")
             logger.info("Creando Lags...")
-            #numeric_cols = get_numeric_columns_pl(data, exclude_cols=["numero_de_cliente", "foto_mes","clase_binaria1","clase_binaria2",'clase_peso'])
 
-            # ---- Creación de tabla con lags ----
-            #creation_lags(meses, numeric_cols, 5)
-            # SELECT LAGS - DELTAS
-            #data = select_data_lags_deltas(k=4)
-
-            #data = feature_engineering_lag(data, numeric_cols, cant_lag=3)
-            #logger.info("Creando Deltas...")
-            #data = feature_engineering_delta(data, numeric_cols, 3)
             logger.info("#### FIN FEATURE ENGINEERING ###")
 
         # ---------------------------------------------------------------------------------
@@ -154,13 +137,13 @@ def main():
             logger.info(f"Splitting data for mes {mes_train}...")
             # selecciono mes prediccion
 
-
+            table_with_deltas = 'c02_delta'
             # paso mes predicción al select
-            data = select_data_lags_deltas(table_with_deltas,mes_train,config.MES_TEST,config.MES_PRED,k=3)
+            data = select_data_lags_deltas(table_with_deltas,mes_train,config.MES_TEST,config.MES_PRED,k=config.NUN_WINDOW)
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"Inicio de split_train_data")
             resp = split_train_data(
-                data, mes_train, config.MES_TEST, config.MES_PRED, getattr(config, "SEED", None), config.SUB_SAMPLE
+                data, mes_train, config.MES_TEST, config.MES_PRED, config.SUB_SAMPLE
             )
             logger.info(f"Fin de split_train_data")
 
