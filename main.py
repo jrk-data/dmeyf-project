@@ -90,6 +90,7 @@ def main():
             create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
 
             # Creo q_productos_cliente_mes
+            # Acá filtro los meses que no van a entrar
             tabla_productos_por_cliente(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, 'c02_q_productos')
 
             # ----------- Obtengo algunos datos para obtener tipos de columnas -------------
@@ -142,10 +143,10 @@ def main():
             mes_test_cfg = config.TEST_BY_TRAIN.get(mes_train, None)
             mes_test = mes_test_cfg if mes_test_cfg is not None else config.MES_TEST
 
-            # 2) Normalizar SIEMPRE a listas
-            mes_train_l = _as_list(mes_train)  # -> [201901]
-            mes_test_l = _as_list(mes_test)  # -> [201904] o lo que toque
-            mes_pred_l = _as_list(config.MES_PRED)
+            # 2) SCALARS para SELECT
+            mes_train_s = int(mes_train)
+            mes_test_s = int(mes_test[0] if isinstance(mes_test, (list, tuple, set)) else mes_test)
+            mes_pred_s = int(config.MES_PRED[0] if isinstance(config.MES_PRED, (list, tuple, set)) else config.MES_PRED)
 
             if mes_test is None:
                 mes_test = config.MES_TEST  # mantiene compatibilidad (puede ser lista o int)
@@ -154,22 +155,21 @@ def main():
             # paso mes predicción al select
             data = select_data_lags_deltas(
                 table_with_deltas,
-                mes_train_l,
-                mes_test_l,
-                mes_pred_l,
+                mes_train_s,  # SCALAR
+                mes_test_s,  # SCALAR
+                mes_pred_s,
                 k=config.NUN_WINDOW
             )
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"Inicio de split_train_data")
             resp = split_train_data(
                 data,
-                MES_TRAIN=mes_train_l,
-                MES_TEST=mes_test_l,
-                MES_PRED=mes_pred_l,
+                MES_TRAIN=[mes_train_s],
+                MES_TEST=[mes_test_s],
+                MES_PRED=[mes_pred_s],
                 SEED=config.SEED,
                 SUB_SAMPLE=config.SUB_SAMPLE
             )
-
             logger.info(f"Fin de split_train_data")
 
 
@@ -198,7 +198,6 @@ def main():
                 study = run_study_cv(
                     X_train=bundle['X_train'],
                     y_train=bundle['y_train_binaria'],
-                    #semillas = semillas_bay,
                     SEED=config.SEEDS[0],
                     w_train=bundle['w_train'],
                     matching_categorical_features=None,
@@ -286,44 +285,47 @@ def main():
                     logger.info(f"Escenario: {sc}")
                     name = sc["name"]
                     pred_month = sc["pred_month"]
-                    groups = sc["train_for_pred"]  # lista de dicts con use_experiments_from
+                    groups = sc["train_for_pred"]
 
                     logger.info(f"[PREDICT] Ejecutando escenario: {name} -> pred_month={pred_month}")
 
-                    # 1) Construir X_pred del mes objetivo (explícito y consistente)
+                    # 1) Construir X_pred del mes objetivo (SCALARS para SELECT, LISTAS para SPLIT)
+                    pred_s = int(pred_month)
                     table_with_deltas = 'c02_delta'
+
                     data_pred = select_data_lags_deltas(
-                        'c02_delta',
-                        _as_list(pred_month),
-                        _as_list(pred_month),
-                        _as_list(pred_month),
+                        table_with_deltas,
+                        pred_s,  # mes_train (dummy)
+                        pred_s,  # mes_test  (dummy)
+                        pred_s,  # mes_pred  (el que importa)
                         k=config.NUN_WINDOW
                     )
+
                     resp_pred = split_train_data(
                         data_pred,
-                        MES_TRAIN=_as_list(pred_month),
-                        MES_TEST=_as_list(pred_month),
-                        MES_PRED=_as_list(pred_month),
+                        MES_TRAIN=[pred_s],
+                        MES_TEST=[pred_s],
+                        MES_PRED=[pred_s],
                         SEED=config.SEED,
                         SUB_SAMPLE=config.SUB_SAMPLE
                     )
+
                     X_pred = resp_pred["X_pred_pl"].to_pandas()
 
-                    # 2) Armar lista de (dir_model_opt, experimento) a ensamblear
+                    # 2) Armar lista de experimentos (carpetas + nombre de experimento)
                     exp_list = []
                     for g in groups:
-                        # train_month = g["train_month"]  # no lo uso por ahora
-                        for src_mes in g["use_experiments_from"]:  # p.ej. 201901 y 202001
+                        for src_mes in g["use_experiments_from"]:
                             experimento = f"{base_study_name}_{src_mes}"
                             dir_model_opt = Path(config.DIR_MODELS) / base_study_name / str(src_mes)
                             exp_list.append({"dir": str(dir_model_opt), "experimento": experimento})
 
-                    # 3) Ensamble multi-experimento con Top-K por experimento
+                    # 3) Ensamble multi-experimento
                     from src.train_test import pred_ensamble_desde_experimentos
                     _ = pred_ensamble_desde_experimentos(
                         Xif=X_pred,
                         experiments=exp_list,
-                        k=config.TOP_K_MODEL,  # k por experimento
+                        k=config.TOP_K_MODEL,
                         output_path=config.OUTPUT_PATH,
                         output_basename=f"{name}_{pred_month}",
                         resumen_csv_name="resumen_ganancias.csv"

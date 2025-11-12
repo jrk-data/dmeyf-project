@@ -50,6 +50,7 @@ def select_c02_polars(path_csv_competencia_2):
     except Exception as e:
         logger.error(f'Error al leer csv: {e}')
         raise
+
 def create_bq_table_c02(df, PROJECT, DATASET, TABLE):
     '''
     Esta función crea una tabla en BigQuery a partir de un DataFrame de Polars.
@@ -213,6 +214,7 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
             b.clase_ternaria
         FROM `{PROJECT}.{DATASET}.{TABLE}` a
         INNER JOIN `{PROJECT}.{DATASET}.{TARGET_TABLE}` b on a.foto_mes = b.foto_mes and a.numero_de_cliente = b.numero_de_cliente
+        where foto_mes not in ({', '.join(config.MONTHS_DROP_LOAD)})
         ;
         """
         client.query(query)
