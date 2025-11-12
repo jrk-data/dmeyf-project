@@ -77,7 +77,7 @@ def main():
         # ---------------------------------------------------------------------------------
         # 1. CREACIÓN/CARGA DE DATOS (START_POINT == 'DATA')
         # ---------------------------------------------------------------------------------
-        if config.START_POINT == 'DATA':
+        if config.START_POINT == 'PREDICT':
             logger.info("Creando nueva base de datos...")
 
             # Selecciono datos crudos
@@ -100,7 +100,7 @@ def main():
             numeric_cols = get_numeric_columns_pl(data, exclude_cols=exclude_cols)
 
             # Creo tabla con lags
-            logger.info(f"Creando lags n= {config.NUN_VENTANA}...")
+            logger.info(f"Creando lags n= {config.NUN_WINDOW_LOAD}...")
             creation_lags(numeric_cols, config.NUN_WINDOW_LOAD)
 
             # Creo tabla con deltas
@@ -131,23 +131,45 @@ def main():
         # ---------------------------------------------------------------------------------
         # 2.5. SPLITS POR MES
         # ---------------------------------------------------------------------------------
+
+        def _as_list(x):
+            return x if isinstance(x, (list, tuple, set)) else [x]
+
         meses_train_separados = {}
         for mes_train in config.MES_TRAIN:
-
             logger.info(f"Splitting data for mes {mes_train}...")
             # selecciono mes prediccion
-            mes_test = config.TEST_BY_TRAIN.get(str(mes_train), None)
+            mes_test_cfg = config.TEST_BY_TRAIN.get(mes_train, None)
+            mes_test = mes_test_cfg if mes_test_cfg is not None else config.MES_TEST
+
+            # 2) Normalizar SIEMPRE a listas
+            mes_train_l = _as_list(mes_train)  # -> [201901]
+            mes_test_l = _as_list(mes_test)  # -> [201904] o lo que toque
+            mes_pred_l = _as_list(config.MES_PRED)
+
             if mes_test is None:
                 mes_test = config.MES_TEST  # mantiene compatibilidad (puede ser lista o int)
 
             table_with_deltas = 'c02_delta'
             # paso mes predicción al select
-            data = select_data_lags_deltas(table_with_deltas,mes_train,mes_test,config.MES_PRED,k=config.NUN_WINDOW)
+            data = select_data_lags_deltas(
+                table_with_deltas,
+                mes_train_l,
+                mes_test_l,
+                mes_pred_l,
+                k=config.NUN_WINDOW
+            )
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"Inicio de split_train_data")
             resp = split_train_data(
-                data, mes_train, mes_test, config.MES_PRED, config.SEED , config.SUB_SAMPLE
+                data,
+                MES_TRAIN=mes_train_l,
+                MES_TEST=mes_test_l,
+                MES_PRED=mes_pred_l,
+                SEED=config.SEED,
+                SUB_SAMPLE=config.SUB_SAMPLE
             )
+
             logger.info(f"Fin de split_train_data")
 
 
@@ -271,21 +293,20 @@ def main():
                     # 1) Construir X_pred del mes objetivo (explícito y consistente)
                     table_with_deltas = 'c02_delta'
                     data_pred = select_data_lags_deltas(
-                        table_with_deltas,
-                        pred_month,  # MES_TRAIN (no se usa para entrenar acá, pero mantiene firma)
-                        pred_month,  # MES_TEST (dummy para pred)
-                        pred_month,  # MES_PRED (el que importa de verdad)
+                        'c02_delta',
+                        _as_list(pred_month),
+                        _as_list(pred_month),
+                        _as_list(pred_month),
                         k=config.NUN_WINDOW
                     )
                     resp_pred = split_train_data(
                         data_pred,
-                        MES_TRAIN=[pred_month],  # pasarlo como lista
-                        MES_TEST=[pred_month],
-                        MES_PRED=[pred_month],
+                        MES_TRAIN=_as_list(pred_month),
+                        MES_TEST=_as_list(pred_month),
+                        MES_PRED=_as_list(pred_month),
                         SEED=config.SEED,
                         SUB_SAMPLE=config.SUB_SAMPLE
                     )
-                    # OJO: convertir a pandas, es lo que esperan los boosters
                     X_pred = resp_pred["X_pred_pl"].to_pandas()
 
                     # 2) Armar lista de (dir_model_opt, experimento) a ensamblear
