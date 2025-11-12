@@ -58,7 +58,7 @@ flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   START_POINT: "PREDICT"
   RUN_OPTIMIZATION: False
-  RUN_CALC_CURVAS: False
+  RUN_CALC_CURVAS: True
 
 # ------------------------------------------------------------------
 
@@ -89,10 +89,10 @@ competencia02:
   BQ_TABLE_FEATURES: "features"
 
 
-  MONTH_TRAIN: [   201901,201902,202001,202002 ,202101,202102 ]
+  MONTH_TRAIN: [   201901,201902,202001,202002 ,202101 ]
 
-  MONTH_VALIDATION: [ 202102 ]
-  MONTH_TEST: [ 202104]
+  MONTH_VALIDATION: [ 202101 ]
+  MONTH_TEST: [ 202102]
   MONTH_PRED: [ 202104 ]
 
   GANANCIA_ACIERTO: 780000
