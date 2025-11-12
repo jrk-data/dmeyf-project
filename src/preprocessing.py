@@ -111,10 +111,11 @@ def split_train_data(
     MES_TRAIN: Union[int, Iterable[int]],
     MES_TEST: Union[int, Iterable[int]],
     MES_PRED: Union[int, Iterable[int]],
-    SUB_SAMPLE: float = None
+    SEED : SEED,
+    SUB_SAMPLE: float = None,
 
 ) -> dict:
-    semilla = config.SEED
+    semilla = SEED
 
     logger.info("Dividiendo datos en train / test / pred...")
 

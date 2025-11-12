@@ -143,7 +143,7 @@ def main():
             logger.info(f"Data shape: {data.shape}")
             logger.info(f"Inicio de split_train_data")
             resp = split_train_data(
-                data, mes_train, config.MES_TEST, config.MES_PRED, config.SUB_SAMPLE
+                data, mes_train, config.MES_TEST, config.MES_PRED, config.SEED , config.SUB_SAMPLE
             )
             logger.info(f"Fin de split_train_data")
 
