@@ -3,8 +3,6 @@
 
 # CONFIG Local
 
-experiment:
-  STUDY_NAME_OPTUNA: "experimento_estacional_01"
 
 
 # BIG QUERY DATOS
@@ -52,14 +50,7 @@ preprocessing:
   SUB_SAMPLE: 0.4
   NUN_WINDOW_LOAD: 5
   NUN_WINDOW: 3
-# ------------------------------------------------------------------
-flags:
-  # NUEVA VARIABLE PARA CONTROL DE FLUJO
-  NUEVA_BASE: False
-  # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-  START_POINT: "DATA"
-  RUN_OPTIMIZATION: False
-  RUN_CALC_CURVAS: True
+
 
 # ------------------------------------------------------------------
 
@@ -104,3 +95,41 @@ competencia01:
   # negocio (por si luego cambias a métrica custom de ganancia)
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
+
+
+experiment:
+  STUDY_NAME_OPTUNA: "experimento_estacional_01"
+
+  # Meses de entrenamiento (los que vas a correr en este job)
+  MONTH_TRAIN: [201901, 201902, 202001, 202002, 202101, 202102]
+
+  # Mapping test por mes de train (clave: mes_train, valor: mes_test)
+  TEST_BY_TRAIN:
+    "201901": 201904
+    "201902": 201904
+    "202001": 202004
+    "202002": 202004
+    # para 202101/202102 no se calculan curvas (solo se usan para entrenar y predecir),
+    # podés omitirlos o dejarlos en blanco si querés:
+    # "202101": null
+    # "202102": null
+
+  # Mes(es) a predecir para cada escenario de negocio
+  PREDICT_SCENARIOS:
+    - name: "abril_2021_estacionalidad"
+      pred_month: 202104
+      # entreno 202101 con todos los modelos 'enero' (201901, 202001)
+      train_for_pred:
+        - train_month: 202101
+          use_experiments_from: [201901, 202001]
+        - train_month: 202102
+          use_experiments_from: [201902, 202002]
+
+# Opcional: si querés otro escenario (junio 2021) agregás otro item acá
+
+flags:
+  # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
+  START_POINT: "TRAIN"        # o "PREDICT" según etapa
+  RUN_OPTIMIZATION: true       # corre optuna si faltan trials
+  RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
+  TOP_K_MODEL: 5
