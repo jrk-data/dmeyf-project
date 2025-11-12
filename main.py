@@ -77,7 +77,7 @@ def main():
         # ---------------------------------------------------------------------------------
         # 1. CREACIÓN/CARGA DE DATOS (START_POINT == 'DATA')
         # ---------------------------------------------------------------------------------
-        if config.START_POINT == 'PREDICT':
+        if config.START_POINT == 'DATA' or config.CREAR_NUEVA_BASE:
             logger.info("Creando nueva base de datos...")
 
             # Selecciono datos crudos
