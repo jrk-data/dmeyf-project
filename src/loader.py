@@ -162,6 +162,9 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
             ]
         )
 
+        # convierto la lista en numeros unidos por , y primeor los paso a str para que no rompa
+        drop_meses = ', '.join(map(str,config.MONTHS_DROP_LOAD))
+
         FEATURE_TABLE = "q_productos_por_cliente_mes"
         logger.info(f"Creando tabla de {FEATURE_TABLE}...")
         query = f"""
@@ -182,9 +185,10 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
             b.clase_ternaria
         FROM `{PROJECT}.{DATASET}.{TABLE}` a
         INNER JOIN `{PROJECT}.{DATASET}.{TARGET_TABLE}` b on a.foto_mes = b.foto_mes and a.numero_de_cliente = b.numero_de_cliente
-        where a.foto_mes not in ({', '.join(config.MONTHS_DROP_LOAD)})
+        where a.foto_mes not in ({drop_meses})
         ;
         """
+        logger.info(query)
         client.query(query)
         logger.info(f"Se ha creado la tabla de {FEATURE_TABLE}")
     except Exception as e:
