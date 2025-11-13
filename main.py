@@ -132,6 +132,11 @@ def main():
         # ---------------------------------------------------------------------------------
         # 2.5. SPLITS POR MES
         # ---------------------------------------------------------------------------------
+        logger.info(f"[DEBUG main] TEST_BY_TRAIN en main: {getattr(config, 'TEST_BY_TRAIN', None)}")
+        logger.info(f"[DEBUG main] MES_TRAIN: {config.MES_TRAIN}")
+        logger.info(f"[DEBUG main] MES_TEST global: {config.MES_TEST} ({type(config.MES_TEST)})")
+        logger.info(f"[DEBUG main] MES_PRED global: {config.MES_PRED} ({type(config.MES_PRED)})")
+
 
         meses_train_separados = {}
         for mes_train in config.MES_TRAIN:
@@ -142,15 +147,20 @@ def main():
 
             # 2) Buscar mes de testeo según TEST_BY_TRAIN (claves int, ver cambio en config.py)
             mes_test_cfg = config.TEST_BY_TRAIN.get(mes_train_s, None)
+            logger.info(
+                f"[DEBUG split] mes_train={mes_train_s} "
+                f"| mes_test_cfg (mapping)={mes_test_cfg} ({type(mes_test_cfg)})"
+            )
 
             if mes_test_cfg is None:
                 # fallback: usar MES_TEST global
                 if isinstance(config.MES_TEST, (list, tuple, set)):
                     mes_test_s = int(config.MES_TEST[0])
                 else:
-                    mes_test_s = int(config.MES_TEST)
+                    logger.info(f"[DEBUG split] Usando MES_TEST global -> mes_test_s={mes_test_s}")
             else:
                 mes_test_s = int(mes_test_cfg)
+                logger.info(f"[DEBUG split] Usando TEST_BY_TRAIN -> mes_test_s={mes_test_s}")
 
             # 3) Mes de predicción (único)
             if isinstance(config.MES_PRED, (list, tuple, set)):
@@ -158,7 +168,21 @@ def main():
             else:
                 mes_pred_s = int(config.MES_PRED)
 
+            logger.info(
+                f"[DEBUG split] mes_train_s={mes_train_s}, "
+                f"mes_test_s={mes_test_s}, mes_pred_s={mes_pred_s}"
+            )
+
             table_with_deltas = 'c02_delta'
+
+            logger.info(
+                f"[DEBUG select_data_lags_deltas] "
+                f"tabla={table_with_deltas}, "
+                f"mes_train={mes_train_s} ({type(mes_train_s)}), "
+                f"mes_test_lista={[mes_test_s]} ({type([mes_test_s])}), "
+                f"mes_pred_lista={[mes_pred_s]} ({type([mes_pred_s])}), "
+                f"k={config.NUN_WINDOW}"
+            )
 
             # 4) SELECT EN BQ: la función espera listas para test/pred
             data = select_data_lags_deltas(
@@ -168,8 +192,17 @@ def main():
                 [mes_pred_s],  # lista
                 k=config.NUN_WINDOW
             )
+
             logger.info(f"Data shape: {data.shape}")
             logger.info("Inicio de split_train_data")
+
+            # ---- DEBUG antes del split ----
+            logger.info(
+                f"[DEBUG split_train_data] MES_TRAIN={[mes_train_s]}, "
+                f"MES_TEST={[mes_test_s]}, MES_PRED={[mes_pred_s]}, "
+                f"SEED={config.SEED}, SUB_SAMPLE={config.SUB_SAMPLE}"
+            )
+
 
             # 5) split_train_data espera listas de meses
             resp = split_train_data(

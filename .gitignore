@@ -14,3 +14,4 @@ TESTEOS_C2.ipynb
 >>>>>>> 17e7933 (Stop tracking compiled artifacts)
 __pycache__/
 *.pyc
+.idea

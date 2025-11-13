@@ -116,6 +116,22 @@ def setup_environment(is_vm_environment):
     DATA_PATH = paths.get("DATA_PATH", "data/competencia_01.csv")
     DB_MODELS_TRAIN_PATH = paths.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
 
+    # DEBUG: ver qué tiene TEST_BY_TRAIN si existe
+    if "TEST_BY_TRAIN" in _cfg2:
+        TEST_BY_TRAIN = _cfg2["TEST_BY_TRAIN"]
+        logger.info(f"[DEBUG config] TEST_BY_TRAIN (crudo de YAML): {TEST_BY_TRAIN}")
+    else:
+        TEST_BY_TRAIN = {}
+        logger.info("[DEBUG config] TEST_BY_TRAIN no definido en YAML, usando dict vacío.")
+
+    # Si querés forzar claves int:
+    try:
+        TEST_BY_TRAIN = {int(k): int(v) for k, v in TEST_BY_TRAIN.items()}
+        logger.info(f"[DEBUG config] TEST_BY_TRAIN (normalizado a int): {TEST_BY_TRAIN}")
+    except Exception as e:
+        logger.error(f"[DEBUG config] Error convirtiendo TEST_BY_TRAIN a int: {e}")
+
+
 
 #  MONTH_TRAIN: [   201901,201902,201903,201904,201905,201906,201907,
 #                  201908,201909,201910,201911,201912,202001,202002,
