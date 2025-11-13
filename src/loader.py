@@ -176,12 +176,6 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
           {expr_sum_master} AS q_producto_master,
           {expr_sum_visa} AS q_producto_visa,
           {expr_sum_general} AS q_producto_general,
-          CAST(
-            CONCAT(
-              SUBSTR(CAST(a.foto_mes AS STRING), 1, 4), '-',
-              SUBSTR(CAST(a.foto_mes AS STRING), 5, 2), '-01'
-            ) AS DATE
-          ) AS foto_mes_date,
             b.clase_ternaria
         FROM `{PROJECT}.{DATASET}.{TABLE}` a
         INNER JOIN `{PROJECT}.{DATASET}.{TARGET_TABLE}` b on a.foto_mes = b.foto_mes and a.numero_de_cliente = b.numero_de_cliente
