@@ -120,37 +120,6 @@ def create_targets_c02(PROJECT, DATASET, TABLE, TARGET_TABLE):
     except Exception as e:
         logger.error(e)
 
-def select_data_with_targets_c02(PROJECT, DATASET, TABLE, TARGET_TABLE):
-    logger.info("Creando tabla de clases ternarias...")
-    try:
-        client = bigquery.Client(project=PROJECT)
-        query = f"""
-        create or replace table `{PROJECT}.{DATASET}.{TARGET_TABLE}`
-        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
-        CLUSTER BY foto_mes, numero_de_cliente AS
-        with usuarios_ultimo_a_primer_es as(
-          select
-          foto_mes
-          , numero_de_cliente
-          , row_number() over (partition by numero_de_cliente order by foto_mes desc) as row_number
-          from `{PROJECT}.{DATASET}.{TABLE}`
-        ) select
-        foto_mes
-        ,numero_de_cliente
-        , case
-        when row_number = 1 and foto_mes < 202108 then 'BAJA+1'
-        when row_number = 2 and foto_mes < 202107 then 'BAJA+2'
-        when row_number >= 3 then 'CONTINUA'
-        else null
-        end as clase_ternaria
-        from usuarios_ultimo_a_primer_es; 
-        """
-        client.query(query)
-        logger.info("Se ha creado la tabla de clases ternarias")
-    except Exception as e:
-        logger.error(e)
-
-
 
 
 def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
@@ -213,12 +182,13 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
             b.clase_ternaria
         FROM `{PROJECT}.{DATASET}.{TABLE}` a
         INNER JOIN `{PROJECT}.{DATASET}.{TARGET_TABLE}` b on a.foto_mes = b.foto_mes and a.numero_de_cliente = b.numero_de_cliente
-        where foto_mes not in ({', '.join(config.MONTHS_DROP_LOAD)})
+        where a.foto_mes not in ({', '.join(config.MONTHS_DROP_LOAD)})
         ;
         """
         client.query(query)
         logger.info(f"Se ha creado la tabla de {FEATURE_TABLE}")
     except Exception as e:
+        logger.info(f"No se creo la tabla de q_productos_por_cliente_mes. error: {e}")
         logger.error(e)
 
 def create_table_c02_products():
@@ -232,6 +202,7 @@ def create_table_c02_products():
             INNER JOIN `{config.BQ_PROJECT}.{config.BQ_DATASET}.q_productos_por_cliente_mes` AS b -- esta tabla ya tiene clase_ternaria
             on a.foto_mes = b.foto_mes AND a.numero_de_cliente = b.numero_de_cliente
     """
+    logger.info(query)
     client = bigquery.Client(project=config.BQ_PROJECT)
     client.query(query)
     logger.info("Se ha creado la tabla de c02_products")
