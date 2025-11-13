@@ -104,10 +104,10 @@ experiment:
 
   # Mapping test por mes de train (clave: mes_train, valor: mes_test)
   TEST_BY_TRAIN:
-    "201901": 201904
-    "201902": 201904
-    "202001": 202004
-    "202002": 202004
+    201901: 201904
+    201902: 201904
+    202001: 202004
+    202002: 202004
     # para 202101/202102 no se calculan curvas (solo se usan para entrenar y predecir),
     # podés omitirlos o dejarlos en blanco si querés:
     # "202101": null
@@ -128,7 +128,7 @@ experiment:
 
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-  NUEVA_BASE: True
+  NUEVA_BASE: False
   START_POINT: "PREDICT"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: true       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
