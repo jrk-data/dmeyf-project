@@ -42,7 +42,6 @@ def select_c02_polars(path_csv_competencia_2):
                 schema_overrides=schema_modificado,
                 infer_schema_length=0  # desactiva inferencia de tipos
             )
-            .filter(~pl.col("foto_mes").is_in(config.MONTHS_DROP_LOAD))
         )
 
         return df
@@ -77,7 +76,7 @@ def create_bq_table_c02(df, PROJECT, DATASET, TABLE):
         autodetect=True,  # BigQuery infiere esquema desde pandas/pyarrow; podés definir esquema explícito si querés
         range_partitioning=bigquery.RangePartitioning(
             field="foto_mes",
-            range_=bigquery.PartitionRange(start=201901, end=202108, interval=1),
+            range_=bigquery.PartitionRange(start=201901, end=202208, interval=1),
         ),
         clustering_fields=["foto_mes","numero_de_cliente"],  
     )
@@ -97,7 +96,7 @@ def create_targets_c02(PROJECT, DATASET, TABLE, TARGET_TABLE):
         client = bigquery.Client(project=PROJECT)
         query = f"""
         create or replace table `{PROJECT}.{DATASET}.{TARGET_TABLE}`
-        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
+        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
         CLUSTER BY foto_mes, numero_de_cliente AS
         with usuarios_ultimo_a_primer_es as(
           select
@@ -127,7 +126,7 @@ def select_data_with_targets_c02(PROJECT, DATASET, TABLE, TARGET_TABLE):
         client = bigquery.Client(project=PROJECT)
         query = f"""
         create or replace table `{PROJECT}.{DATASET}.{TARGET_TABLE}`
-        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
+        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
         CLUSTER BY foto_mes, numero_de_cliente AS
         with usuarios_ultimo_a_primer_es as(
           select
@@ -198,7 +197,7 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         logger.info(f"Creando tabla de {FEATURE_TABLE}...")
         query = f"""
         CREATE OR REPLACE TABLE `{PROJECT}.{DATASET}.{FEATURE_TABLE}`
-        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
+        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
         CLUSTER BY foto_mes, numero_de_cliente AS
         SELECT
           a.*,

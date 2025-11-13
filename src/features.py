@@ -162,7 +162,7 @@ def creation_lags(columnas: List[str], cant_lag: int = 1):
 
     sql = f"""
     CREATE OR REPLACE TABLE `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_lags`
-    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
+    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
     CLUSTER BY numero_de_cliente
     AS
     SELECT
@@ -193,7 +193,7 @@ def creation_deltas(columnas, cant_lag):
 
     sql = f"""
     CREATE OR REPLACE TABLE {table_delta}
-    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202108, 1))
+    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
     CLUSTER BY numero_de_cliente
     AS
     SELECT

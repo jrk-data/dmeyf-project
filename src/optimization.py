@@ -287,7 +287,7 @@ def run_study_cv(X_train, y_train, SEED,w_train, matching_categorical_features: 
         # Si hay menos de 20, correr los que faltan
         else:
             n_trials_faltantes = N_TRIALS - n_trials_realizados
-            print(f"Ejecutando {n_trials_faltantes} trials adicionales para llegar a 20.")
+            logger.info(f"Ejecutando {n_trials_faltantes} trials adicionales para llegar a 20.")
 
 
             study.optimize(
