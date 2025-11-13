@@ -214,9 +214,10 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
             b.clase_ternaria
         FROM `{PROJECT}.{DATASET}.{TABLE}` a
         INNER JOIN `{PROJECT}.{DATASET}.{TARGET_TABLE}` b on a.foto_mes = b.foto_mes and a.numero_de_cliente = b.numero_de_cliente
-        where foto_mes not in ({', '.join(config.MONTHS_DROP_LOAD)})
+        where a.foto_mes not in ({', '.join(config.MONTHS_DROP_LOAD)})
         ;
         """
+        logger.info(f"Se calculan los lags:\n {query}")
         client.query(query)
         logger.info(f"Se ha creado la tabla de {FEATURE_TABLE}")
     except Exception as e:
@@ -232,7 +233,7 @@ def create_table_c02_products():
             FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{config.BQ_TABLE}` AS a
             INNER JOIN `{config.BQ_PROJECT}.{config.BQ_DATASET}.q_productos_por_cliente_mes` AS b -- esta tabla ya tiene clase_ternaria
             on a.foto_mes = b.foto_mes AND a.numero_de_cliente = b.numero_de_cliente
-    """
+            where a.foto_mes not in ({', '.join(config.MONTHS_DROP_LOAD)}); """
     client = bigquery.Client(project=config.BQ_PROJECT)
     client.query(query)
     logger.info("Se ha creado la tabla de c02_products")
@@ -242,7 +243,6 @@ def create_table_c02_products():
 
 def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
     try:
-
         # extraigo meses de la lista y concateno en string
         if isinstance(MESES, (list, tuple)):
             MESES = ", ".join(map(str, MESES))
