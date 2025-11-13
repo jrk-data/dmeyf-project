@@ -165,10 +165,10 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         # convierto la lista en numeros unidos por , y primeor los paso a str para que no rompa
         drop_meses = ', '.join(map(str,config.MONTHS_DROP_LOAD))
 
-        FEATURE_TABLE = "c02_productos"
-        logger.info(f"Creando tabla de {FEATURE_TABLE}...")
+        feature_table = "c02_products"
+        logger.info(f"Creando tabla de {feature_table}...")
         query = f"""
-        CREATE OR REPLACE TABLE `{PROJECT}.{DATASET}.{FEATURE_TABLE}`
+        CREATE OR REPLACE TABLE `{PROJECT}.{DATASET}.{feature_table}`
         PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
         CLUSTER BY foto_mes, numero_de_cliente AS
         SELECT
@@ -190,29 +190,10 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         """
         logger.info(query)
         client.query(query)
-        logger.info(f"Se ha creado la tabla de {FEATURE_TABLE}")
+        logger.info(f"Se ha creado la tabla de {feature_table}")
     except Exception as e:
         logger.info(f"No se creo la tabla de q_productos_por_cliente_mes. error: {e}")
         logger.error(e)
-
-def create_table_c02_products():
-    logger.info("Creando tabla de c02_products...")
-    query= f"""
-        CREATE TABLE `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_products` AS
-        SELECT 
-                a.*, 
-                b.* except(foto_mes, numero_de_cliente,foto_mes_date)
-            FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{config.BQ_TABLE}` AS a
-            INNER JOIN `{config.BQ_PROJECT}.{config.BQ_DATASET}.q_productos_por_cliente_mes` AS b -- esta tabla ya tiene clase_ternaria
-            on a.foto_mes = b.foto_mes AND a.numero_de_cliente = b.numero_de_cliente
-    """
-    logger.info(query)
-    client = bigquery.Client(project=config.BQ_PROJECT)
-    client.query(query)
-    logger.info("Se ha creado la tabla de c02_products")
-
-
-
 
 def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
     try:
