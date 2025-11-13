@@ -81,13 +81,13 @@ def main():
             logger.info("Creando nueva base de datos...")
 
             # Selecciono datos crudos
-            #data = select_c02_polars(config.DATA_PATH)
+            data = select_c02_polars(config.DATA_PATH)
 
             # Creo tabla en BQ a partir de datos Crudos
-            #create_bq_table_c02(data, config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE)
+            create_bq_table_c02(data, config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE)
 
             # Creo targets
-            #create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
+            create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
 
             # Creo q_productos_cliente_mes
             # Acá filtro los meses que no van a entrar
