@@ -125,7 +125,6 @@ experiment:
           use_experiments_from: [201902, 202002]
 
 # Opcional: si querés otro escenario (junio 2021) agregás otro item acá
-
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   NUEVA_BASE: true
