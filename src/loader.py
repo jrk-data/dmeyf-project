@@ -165,7 +165,7 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         # convierto la lista en numeros unidos por , y primeor los paso a str para que no rompa
         drop_meses = ', '.join(map(str,config.MONTHS_DROP_LOAD))
 
-        FEATURE_TABLE = "q_productos_por_cliente_mes"
+        FEATURE_TABLE = "c02_productos"
         logger.info(f"Creando tabla de {FEATURE_TABLE}...")
         query = f"""
         CREATE OR REPLACE TABLE `{PROJECT}.{DATASET}.{FEATURE_TABLE}`

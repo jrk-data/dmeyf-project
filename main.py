@@ -91,10 +91,10 @@ def main():
 
             # Creo q_productos_cliente_mes
             # Acá filtro los meses que no van a entrar
-            tabla_productos_por_cliente(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, 'c02_q_productos')
+            tabla_productos_por_cliente(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS) #uso c02 y targets para joinear t crear c02_productos
 
             # ----------- Obtengo algunos datos para obtener tipos de columnas -------------
-            data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, 'c02_q_productos', [202102])
+            data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, 'c02_productos', [202102])
             # Columnas a excluir
             exclude_cols = ["numero_de_cliente", "foto_mes", "clase_binaria1", "clase_binaria2", "clase_peso"]
             # Creo array con columnas numéricas
