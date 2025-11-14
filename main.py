@@ -385,9 +385,9 @@ def main():
             res = generar_reporte_html_ganancia(
                 y_pred=y_pred,
                 weight=weight,
-                experimento="experimento_estacional_abril_01",
+                experimento=config.STUDY_NAME_OPTUNA,
                 mes=config.MES_PRED,
-                output_html_path="output/reporte_ganancia_202104.html"
+                output_html_path=f"/home/joaquinrk_data/buckets/b1/outputs/{config.STUDY_NAME_OPTUNA}.html"
             )
 
             print("Reporte generado:", res["path"])
