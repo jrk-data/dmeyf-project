@@ -2,7 +2,7 @@ import src.zlgbm as exp
 from google.cloud import bigquery, bigquery_storage
 import pandas as pd
 import logging
-
+from src.loader import select_data_c02
 # Configurar logging
 logging.basicConfig(
     level=logging.INFO,
@@ -64,7 +64,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
     try:
         # 2. Cargar datos de BigQuery
         logger.info("Iniciando carga de datos desde BigQuery...")
-        df = cargar_bigquery(meses_total)
+        df = select_data_c02(meses_total)
         logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
 
         # 3. Configurar workflow

@@ -189,9 +189,11 @@ def tabla_productos_por_cliente(PROJECT, DATASET, TABLE, TARGET_TABLE):
         logger.info(f"No se creo la tabla de q_productos_por_cliente_mes. error: {e}")
         logger.error(e)
 
-def select_data_c02(PROJECT, DATASET, TABLE,  MESES):
+def select_data_c02( MESES):
     try:
-
+        PROJECT= config.BQ_PROJECT
+        DATASET = config.BQ_DATASET
+        TABLE = 'c02_delta'
         # extraigo meses de la lista y concateno en string
         if isinstance(MESES, (list, tuple)):
             MESES = ", ".join(map(str, MESES))
