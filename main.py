@@ -356,44 +356,44 @@ def main():
                     )
 
         # ######################### REPORTERÍA ############################## #
-        REPORTE = True
-        if REPORTE is True:
-
-            client = bigquery.Client(project=config.BQ_PROJECT)
-
-            query = f"""
-            SELECT numero_de_cliente, foto_mes, clase_binaria
-            FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_delta`
-            WHERE foto_mes = {config.MES_PRED[0]}
-            """
-
-            df_real = client.query(query).to_dataframe()
-
-            # 2) Join con df_pred por numero_de_cliente (y foto_mes si querés más seguridad)
-            df_join = _.merge(
-                df_real,
-                on=["numero_de_cliente"],
-                how="inner"
-            )
-
-            # 3) Construir y_pred y weight (según tu codificación)
-            y_pred = df_join["prob_modelo"].to_numpy()
-
-            # codificación del weight tal como lo usás en LGBM
-            weight = np.where(df_join["clase_binaria"] == 1, 1.00002, 1.0)
-
-            res = generar_reporte_html_ganancia(
-                y_pred=y_pred,
-                weight=weight,
-                experimento=config.STUDY_NAME_OPTUNA,
-                mes=config.MES_PRED[0],
-                output_html_path=f"/home/joaquinrk_data/buckets/b1/outputs/{config.STUDY_NAME_OPTUNA}.html"
-            )
-
-            print("Reporte generado:", res["path"])
-            print("Ganancia modelo:", res["ganancia_modelo"])
-            print("Ganancia máxima:", res["ganancia_maxima"])
-            print("Fracción capturada:", res["ratio"])
+        # REPORTE = True
+        # if REPORTE is True:
+        #
+        #     client = bigquery.Client(project=config.BQ_PROJECT)
+        #
+        #     query = f"""
+        #     SELECT numero_de_cliente, foto_mes, clase_binaria
+        #     FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_delta`
+        #     WHERE foto_mes = {config.MES_PRED[0]}
+        #     """
+        #
+        #     df_real = client.query(query).to_dataframe()
+        #
+        #     # 2) Join con df_pred por numero_de_cliente (y foto_mes si querés más seguridad)
+        #     df_join = _.merge(
+        #         df_real,
+        #         on=["numero_de_cliente"],
+        #         how="inner"
+        #     )
+        #
+        #     # 3) Construir y_pred y weight (según tu codificación)
+        #     y_pred = df_join["prob_modelo"].to_numpy()
+        #
+        #     # codificación del weight tal como lo usás en LGBM
+        #     weight = np.where(df_join["clase_binaria"] == 1, 1.00002, 1.0)
+        #
+        #     res = generar_reporte_html_ganancia(
+        #         y_pred=y_pred,
+        #         weight=weight,
+        #         experimento=config.STUDY_NAME_OPTUNA,
+        #         mes=config.MES_PRED[0],
+        #         output_html_path=f"/home/joaquinrk_data/buckets/b1/outputs/{config.STUDY_NAME_OPTUNA}.html"
+        #     )
+        #
+        #     print("Reporte generado:", res["path"])
+        #     print("Ganancia modelo:", res["ganancia_modelo"])
+        #     print("Ganancia máxima:", res["ganancia_maxima"])
+        #     print("Fracción capturada:", res["ratio"])
 
 
 

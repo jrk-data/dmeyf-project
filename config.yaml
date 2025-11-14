@@ -95,8 +95,52 @@ competencia01:
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
 
+flags:
+  # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
+  NUEVA_BASE: false
+  START_POINT: "PREDICT"        # o "PREDICT" según etapa
+  RUN_OPTIMIZATION: true       # corre optuna si faltan trials
+  RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
+  TOP_K_MODEL: 5
 
 experiment:
+  STUDY_NAME_OPTUNA: "experimento_estacional_junio_01"
+
+  # Meses de entrenamiento (los que vas a correr en este job)
+  MONTH_TRAIN: [201901, 201902,201903,201904,201906, 202001, 202002,202003,202004,202006, 202101, 202102, 202103, 202104, 202106]
+
+  # Mapping test por mes de train (clave: mes_train, valor: mes_test)
+  TEST_BY_TRAIN:
+    201901: 201906
+    201902: 201906
+    201903: 201906
+    201904: 201906
+
+    202001: 202006
+    202002: 202006
+    202003: 201906
+    202004: 201906
+    # para 202101/202102 no se calculan curvas (solo se usan para entrenar y predecir),
+    # podés omitirlos o dejarlos en blanco si querés:
+    # "202101": null
+    # "202102": null
+
+  # Mes(es) a predecir para cada escenario de negocio
+  PREDICT_SCENARIOS:
+    - name: "abril_2021_estacionalidad"
+      pred_month: 202104
+      # entreno 202101 con todos los modelos 'enero' (201901, 202001)
+      train_for_pred:
+        - train_month: 202101
+          use_experiments_from: [201901, 202001]
+        - train_month: 202102
+          use_experiments_from: [201902, 202002]
+        - train_month: 202103
+          use_experiments_from: [201903, 202003]
+        - train_month: 202104
+          use_experiments_from: [201904, 202004]
+
+experiment_abril_estacionalidad:
   STUDY_NAME_OPTUNA: "experimento_estacional_abril_01"
 
   # Meses de entrenamiento (los que vas a correr en este job)
@@ -125,11 +169,3 @@ experiment:
           use_experiments_from: [201902, 202002]
 
 # Opcional: si querés otro escenario (junio 2021) agregás otro item acá
-
-flags:
-  # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-  NUEVA_BASE: false
-  START_POINT: "PREDICT"        # o "PREDICT" según etapa
-  RUN_OPTIMIZATION: false       # corre optuna si faltan trials
-  RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
-  TOP_K_MODEL: 5
