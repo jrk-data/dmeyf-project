@@ -66,7 +66,8 @@ from src.features import (
 )
 from src.optimization import (run_study, run_study_cv, create_seed)
 from src.preprocessing import binary_target, split_train_data, create_binary_target_column
-from src.train_test import train_model, calculo_curvas_ganancia, pred_ensamble_modelos
+from src.train_test import train_model, calculo_curvas_ganancia, pred_ensamble_modelos,pred_ensamble_desde_experimentos
+from src.predict import prepare_prediction_dataframe
 
 
 def main():
@@ -134,62 +135,71 @@ def main():
         # ---------------------------------------------------------------------------------
 
         meses_train_separados = {}
-        for mes_train in config.MES_TRAIN:
-            logger.info(f"Splitting data for mes {mes_train}...")
 
-            # 1) Asegurar que trabajamos con ints
-            mes_train_s = int(mes_train)
+        if config.START_POINT in ['OPTUNA', 'TRAIN']:
+            for mes_train in config.MES_TRAIN:
+                logger.info(f"Splitting data for mes {mes_train}...")
 
-            # 2) Buscar mes de testeo según TEST_BY_TRAIN (claves int, ver cambio en config.py)
-            mes_test_cfg = config.TEST_BY_TRAIN.get(mes_train_s, None)
+                # 1) Asegurar que trabajamos con ints
+                mes_train_s = int(mes_train)
 
-            if mes_test_cfg is None:
-                # fallback: usar MES_TEST global
-                if isinstance(config.MES_TEST, (list, tuple, set)):
-                    mes_test_s = int(config.MES_TEST[0])
+                # 2) Buscar mes de testeo según TEST_BY_TRAIN
+                mes_test_cfg = config.TEST_BY_TRAIN.get(mes_train_s, None)
+
+                if mes_test_cfg is None:
+                    # fallback: usar MES_TEST global
+                    if isinstance(config.MES_TEST, (list, tuple, set)):
+                        mes_test_s = int(list(config.MES_TEST)[0])
+                    else:
+                        mes_test_s = int(config.MES_TEST)
                 else:
-                    mes_test_s = int(config.MES_TEST)
-            else:
-                mes_test_s = int(mes_test_cfg)
+                    mes_test_s = int(mes_test_cfg)
 
-            # 3) Mes de predicción (único)
-            if isinstance(config.MES_PRED, (list, tuple, set)):
-                mes_pred_s = int(config.MES_PRED[0])
-            else:
-                mes_pred_s = int(config.MES_PRED)
+                # 3) Definir mes de predicción (similar a tu lógica actual)
+                if isinstance(config.MES_PRED, (list, tuple, set)):
+                    mes_pred_s = int(list(config.MES_PRED)[0])
+                else:
+                    mes_pred_s = int(config.MES_PRED)
 
-            table_with_deltas = 'c02_delta'
+                logger.info(f"mes_test: {mes_test_s}")
+                logger.info(f"mes_pred: {mes_pred_s}")
+                logger.info(f"meses: {[mes_train_s, mes_test_s, mes_pred_s]}")
 
-            # 4) SELECT EN BQ: la función espera listas para test/pred
-            data = select_data_lags_deltas(
-                table_with_deltas,
-                mes_train_s,  # scalar
-                [mes_test_s],  # lista
-                [mes_pred_s],  # lista
-                k=config.NUN_WINDOW
-            )
-            logger.info(f"Data shape: {data.shape}")
-            logger.info("Inicio de split_train_data")
+                # 4) Seleccionar datos con lags y deltas para esos meses
+                table_with_deltas = 'c02_delta'
+                data = select_data_lags_deltas(
+                    table_with_deltas,
+                    mes_train_s,
+                    mes_test_s,
+                    mes_pred_s,
+                    k=config.NUN_WINDOW
+                )
 
-            # 5) split_train_data espera listas de meses
-            resp = split_train_data(
-                data,
-                MES_TRAIN=[mes_train_s],
-                MES_TEST=[mes_test_s],
-                MES_PRED=[mes_pred_s],
-                SEED=config.SEED,
-                SUB_SAMPLE=config.SUB_SAMPLE
-            )
-            logger.info("Fin de split_train_data")
+                logger.info(f"Data shape: {data.shape}")
+                logger.info("Inicio de split_train_data")
 
-            meses_train_separados[mes_train_s] = {
-                'X_train': resp["X_train_pl"].to_pandas(),
-                'y_train_binaria': resp["y_train_binaria"],
-                'w_train': resp["w_train"],
-                'y_test_class': resp["y_test_class"],
-                'X_test': resp["X_test_pl"].to_pandas(),
-                'X_pred': resp["X_pred_pl"].to_pandas(),
-            }
+                # 5) Hacer split train/test/pred (con undersampling si aplica)
+                resp = split_train_data(
+                    data,
+                    MES_TRAIN=[mes_train_s],
+                    MES_TEST=[mes_test_s],
+                    MES_PRED=[mes_pred_s],
+                    SEED=config.SEED,
+                    SUB_SAMPLE=config.SUB_SAMPLE
+                )
+                logger.info("Fin de split_train_data")
+
+                meses_train_separados[mes_train_s] = {
+                    'X_train': resp["X_train_pl"].to_pandas(),
+                    'y_train_binaria': resp["y_train_binaria"],
+                    'w_train': resp["w_train"],
+                    'y_test_class': resp["y_test_class"],
+                    'X_test': resp["X_test_pl"].to_pandas(),
+                    'X_pred': resp["X_pred_pl"].to_pandas(),
+                }
+        else:
+            logger.info("Saltando generación de splits por mes (START_POINT no requiere train/optuna)")
+            meses_train_separados = {}
 
         # ---------------------------------------------------------------------------------
         # 3. OPTIMIZACIÓN HIPERPARÁMETROS (por mes)
@@ -197,7 +207,7 @@ def main():
         storage_optuna = config.STORAGE_OPTUNA
         base_study_name = config.STUDY_NAME_OPTUNA
         studies_by_month = {}
-        if config.START_POINT in ['OPTUNA', 'TRAIN', 'PREDICT']:
+        if config.START_POINT in ['OPTUNA', 'TRAIN']:
             logger.info(f"Seteando path de BBDD Optuna: {storage_optuna} - base_name={base_study_name}")
             logger.info("Iniciando estudios por mes...")
 
@@ -223,7 +233,7 @@ def main():
         top_k_model = config.TOP_K_MODEL
         models_root = config.DIR_MODELS
 
-        if config.START_POINT in ['TRAIN', 'PREDICT']:
+        if config.START_POINT in ['TRAIN']:
             logger.info("Entrenando modelos Top-K y calculando curvas por mes...")
 
             if config.RUN_CALC_CURVAS:
@@ -274,20 +284,37 @@ def main():
         # ---------------------------------------------------------------------------------
         if config.START_POINT == 'PREDICT':
             scenarios = getattr(config, "PREDICT_SCENARIOS", [])
-            if not scenarios:
 
-                mes_ref = max(meses_train_separados.keys())
+            # Caso simple: sin escenarios → usar último mes de train como experimento base
+            if not scenarios:
+                mes_ref = max(int(m) for m in config.MES_TRAIN)
                 experimento = f"{base_study_name}_{mes_ref}"
                 models_dir = Path(config.DIR_MODELS) / base_study_name / str(mes_ref)
 
-                _df_pred = pred_ensamble_modelos(
-                    Xif=meses_train_separados[mes_ref]['X_pred'],
+                # Mes a predecir tomado de config.MES_PRED
+                if isinstance(config.MES_PRED, (list, tuple, set)):
+                    pred_s = int(list(config.MES_PRED)[0])
+                else:
+                    pred_s = int(config.MES_PRED)
+
+                logger.info(f"[PREDICT] Escenario simple -> train_ref={mes_ref}, pred_month={pred_s}")
+
+                X_pred = prepare_prediction_dataframe(
+                    table_name="c02_delta",
+                    mes_pred=pred_s,
+                    k=config.NUN_WINDOW
+                )
+
+                _ = pred_ensamble_modelos(
+                    Xif=X_pred,
                     dir_model_opt=str(models_dir),
                     experimento=experimento,
                     output_path=config.OUTPUT_PATH,
                     resumen_csv_name="resumen_ganancias.csv",
-                    k=6
+                    k=config.TOP_K_MODEL
                 )
+
+            # Caso con escenarios definidos en config.PREDICT_SCENARIOS
             else:
                 logger.info("Se recorren los escenarios de entrenamiento")
                 for sc in scenarios:
@@ -298,28 +325,14 @@ def main():
 
                     logger.info(f"[PREDICT] Ejecutando escenario: {name} -> pred_month={pred_month}")
 
-                    # 1) Construir X_pred del mes objetivo (SCALARS para SELECT, LISTAS para SPLIT)
                     pred_s = int(pred_month)
-                    table_with_deltas = 'c02_delta'
 
-                    data_pred = select_data_lags_deltas(
-                        table_with_deltas,
-                        pred_s,  # mes_train (dummy)
-                        pred_s,  # mes_test  (dummy)
-                        pred_s,  # mes_pred  (el que importa)
+                    # 1) Construir X_pred del mes objetivo
+                    X_pred = prepare_prediction_dataframe(
+                        table_name="c02_delta",
+                        mes_pred=pred_s,
                         k=config.NUN_WINDOW
                     )
-
-                    resp_pred = split_train_data(
-                        data_pred,
-                        MES_TRAIN=[pred_s],
-                        MES_TEST=[pred_s],
-                        MES_PRED=[pred_s],
-                        SEED=config.SEED,
-                        SUB_SAMPLE=config.SUB_SAMPLE
-                    )
-
-                    X_pred = resp_pred["X_pred_pl"].to_pandas()
 
                     # 2) Armar lista de experimentos (carpetas + nombre de experimento)
                     exp_list = []
@@ -330,7 +343,6 @@ def main():
                             exp_list.append({"dir": str(dir_model_opt), "experimento": experimento})
 
                     # 3) Ensamble multi-experimento
-                    from src.train_test import pred_ensamble_desde_experimentos
                     _ = pred_ensamble_desde_experimentos(
                         Xif=X_pred,
                         experiments=exp_list,
