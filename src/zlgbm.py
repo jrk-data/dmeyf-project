@@ -17,6 +17,8 @@ import json
 from datetime import datetime
 from sklearn.utils import resample
 import warnings
+from src.utils import _coerce_object_cols
+
 warnings.filterwarnings('ignore')
 
 # Configurar logging
@@ -120,16 +122,17 @@ BASE_PATH = "./exp"
 def calcular_ganancia(y_pred, y_true):
     """
     Calcula la ganancia máxima acumulada ordenando las predicciones de mayor a menor.
-    
+
     Args:
         y_true: Valores reales (0 o 1)
-        y_pred: Predicciones (probabilidades o scores continuos)
-        
+        y_pred: Predicciones (probabilidades o scores continuos) -> DEBE SER CONTINUO
+
     Returns:
         tuple[float, np.ndarray]: Ganancia máxima acumulada y la serie acumulada completa.
     """
+
     def _to_polars_series(
-        values, name: str, dtype: pl.DataType | None = None
+            values, name: str, dtype: pl.DataType | None = None
     ) -> pl.Series:
         """Convierte valores a serie de Polars"""
         if isinstance(values, pl.Series):
@@ -140,27 +143,27 @@ def calcular_ganancia(y_pred, y_true):
             if not isinstance(values, (list, tuple)):
                 values = list(values)
             series = pl.Series(name, values)
-        
+
         if dtype is not None:
             try:
                 series = series.cast(dtype, strict=False)
             except pl.ComputeError:
                 series = series.cast(pl.Float64, strict=False)
-        
+
         return series
-    
+
     # Convertir a series de Polars
     y_true_series = _to_polars_series(y_true, "y_true", dtype=pl.Float64)
     y_pred_series = _to_polars_series(y_pred, "y_pred_proba", dtype=pl.Float64)
-    
+
     # Validaciones
     if y_true_series.is_empty() or y_pred_series.is_empty():
         logger.debug("Ganancia calculada: 0 (datasets vacíos)")
         return 0.0, np.array([], dtype=float)
-    
+
     if y_true_series.len() != y_pred_series.len():
         raise ValueError("y_true y y_pred deben tener la misma longitud")
-    
+
     # Calcular ganancia
     acumulado_df = (
         pl.DataFrame({"y_true": y_true_series, "y_pred_proba": y_pred_series})
@@ -177,35 +180,37 @@ def calcular_ganancia(y_pred, y_true):
             .alias("ganancia_acumulada")
         ])
     )
-    
+
     ganancia_acumulada_series = acumulado_df["ganancia_acumulada"]
     ganancia_total = ganancia_acumulada_series.max()
-    
+
     if ganancia_total > 2_147_483_647:
         ganancia_total = float(ganancia_total)
-    
+
     ganancias_acumuladas = ganancia_acumulada_series.to_numpy()
-    
+
     logger.info(f"Ganancia calculada: {ganancia_total:,.0f}")
-    
+
     return ganancia_total, ganancias_acumuladas
 
 
 def ganancia_lgb_binary(y_pred, y_true):
     """
     Función de ganancia para LightGBM en clasificación binaria.
-    Compatible con callbacks de LightGBM.
-    
+    Compatible con callbacks de LightGBM (feval).
+
     Args:
-        y_pred: Predicciones de probabilidad del modelo
+        y_pred: Predicciones DE PROBABILIDAD (ya que LightGBM devuelve prob. para binario)
         y_true: Dataset de LightGBM con labels verdaderos
-        
+
     Returns:
         tuple: (eval_name, eval_result, is_higher_better)
     """
     y_true_labels = y_true.get_label()
-    y_pred_binary = (y_pred > 0.025).astype(int)
-    ganancia_total, _ = calcular_ganancia(y_pred=y_pred_binary, y_true=y_true_labels)
+    # Pasamos las predicciones continuas (y_pred) a la función de ganancia
+    ganancia_total, _ = calcular_ganancia(y_pred=y_pred, y_true=y_true_labels)
+    # Nota: la implementación del curso usa un umbral fijo 0.025 aquí para feval,
+    # pero el cálculo correcto de la ganancia máxima no necesita un umbral fijo.
     return "ganancia", ganancia_total, True
 
 
@@ -1015,6 +1020,8 @@ def main(df=None, meses_train=None, mes_test1=None, mes_test2=None, mes_final=No
         logger.info(f"Shape df externo: {df.shape}")
         # transformo df de polasrs a pandas
         df = df.to_pandas()
+        # pasamos todos los campos a int
+        df = _coerce_object_cols(df)
 
     # Calcular clase_ternaria solo si no existe
     if "clase_ternaria" not in df.columns:
