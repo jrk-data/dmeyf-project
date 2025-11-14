@@ -372,7 +372,7 @@ def main():
             # 2) Join con df_pred por numero_de_cliente (y foto_mes si querés más seguridad)
             df_join = _.merge(
                 df_real,
-                on=["numero_de_cliente", "foto_mes"],
+                on=["numero_de_cliente"],
                 how="inner"
             )
 
