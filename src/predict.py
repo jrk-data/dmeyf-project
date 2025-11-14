@@ -35,8 +35,8 @@ def prepare_prediction_dataframe(
     df_polars = select_data_lags_deltas(
         table_name,
         mes_pred,  # mes_train dummy
-        mes_pred,  # mes_test  dummy
-        mes_pred,  # mes_pred real
+        [mes_pred],  # mes_test  dummy
+        [mes_pred],  # mes_pred real
         k=k
     )
 
