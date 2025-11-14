@@ -68,6 +68,9 @@ from src.optimization import (run_study, run_study_cv, create_seed)
 from src.preprocessing import binary_target, split_train_data, create_binary_target_column
 from src.train_test import train_model, calculo_curvas_ganancia, pred_ensamble_modelos,pred_ensamble_desde_experimentos
 from src.predict import prepare_prediction_dataframe
+from src.reporting import generar_reporte_html_ganancia
+from google.cloud import bigquery
+import numpy as np
 
 
 def main():
@@ -351,6 +354,46 @@ def main():
                         output_basename=f"{name}_{pred_month}",
                         resumen_csv_name="resumen_ganancias.csv"
                     )
+
+        # ######################### REPORTERÍA ############################## #
+        REPORTE = True
+        if REPORTE is True:
+
+            client = bigquery.Client(project=config.BQ_PROJECT)
+
+            query = f"""
+            SELECT numero_de_cliente, foto_mes, clase_binaria
+            FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_delta`
+            WHERE foto_mes = {config.MES_PRED}
+            """
+
+            df_real = client.query(query).to_dataframe()
+
+            # 2) Join con df_pred por numero_de_cliente (y foto_mes si querés más seguridad)
+            df_join = _.merge(
+                df_real,
+                on=["numero_de_cliente", "foto_mes"],
+                how="inner"
+            )
+
+            # 3) Construir y_pred y weight (según tu codificación)
+            y_pred = df_join["prob_modelo"].to_numpy()
+
+            # codificación del weight tal como lo usás en LGBM
+            weight = np.where(df_join["clase_binaria"] == 1, 1.00002, 1.0)
+
+            res = generar_reporte_html_ganancia(
+                y_pred=y_pred,
+                weight=weight,
+                experimento="experimento_estacional_abril_01",
+                mes=config.MES_PRED,
+                output_html_path="output/reporte_ganancia_202104.html"
+            )
+
+            print("Reporte generado:", res["path"])
+            print("Ganancia modelo:", res["ganancia_modelo"])
+            print("Ganancia máxima:", res["ganancia_maxima"])
+            print("Fracción capturada:", res["ratio"])
 
 
 
