@@ -1,6 +1,14 @@
 import src.zlgbm as exp
 from google.cloud import bigquery, bigquery_storage
 import pandas as pd
+import logging
+
+# Configurar logging
+logging.basicConfig(
+    level=logger.inFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # =====================
 # Config BigQuery
@@ -20,11 +28,13 @@ def cargar_bigquery(meses):
     FROM `{PROJECT}.{DATASET}.{TABLE}`
     WHERE foto_mes IN ({",".join(map(str, meses))})
     """
+    logger.info(f"Cargando datos desde BigQuery: {query}")
     df = (
         client.query(query)
         .result()
         .to_dataframe(bqstorage_client=bqstorage_client)
     )
+    logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
     return df
 
 
@@ -32,35 +42,52 @@ def cargar_bigquery(meses):
 # Función de ejecución general
 # =============================
 def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
-    print(f"\n\n==============================")
-    print(f"   Ejecutando {nombre}")
-    print(f"==============================")
+    logger.info(f"\n{'=' * 50}")
+    logger.info(f"Iniciando experimento: {nombre}")
+    logger.info(f"{'=' * 50}")
+
+    # Registrar configuración
+    logger.info("Configuración del experimento:")
+    logger.info(f"- Meses de entrenamiento: {meses_train}")
+    logger.info(f"- Mes de prueba 1: {mes_test1}")
+    logger.info(f"- Mes de prueba 2: {mes_test2}")
+    logger.info(f"- Mes final: {mes_final}")
+    logger.info(f"- Feature Engineering Lags: {exp.FEATURE_ENGINEERING_LAGS}")
+    logger.info(f"- Proyecto BigQuery: {PROJECT}")
+    logger.info(f"- Dataset: {DATASET}")
+    logger.info(f"- Tabla: {TABLE}")
 
     # 1. Definir meses necesarios para la query
     meses_total = sorted(list(set(meses_train + [mes_test1, mes_test2, mes_final])))
+    logger.info(f"Meses totales a procesar: {meses_total}")
 
-    # 2. Cargar datos de BigQuery
-    df = cargar_bigquery(meses_total)
+    try:
+        # 2. Cargar datos de BigQuery
+        logger.info("Iniciando carga de datos desde BigQuery...")
+        df = cargar_bigquery(meses_total)
+        logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
 
-    # 3. Configurar workflow
-    exp.FOTO_MES_TRAIN_INICIO = min(meses_train)
-    exp.FOTO_MES_TRAIN_FIN = max(meses_train)
-    exp.FOTO_MES_TEST_1 = mes_test1
-    exp.FOTO_MES_TEST_2 = mes_test2
-    exp.FOTO_MES_FINAL = mes_final
+        # 3. Configurar workflow
+        exp.FOTO_MES_TRAIN_INICIO = min(meses_train)
+        exp.FOTO_MES_TRAIN_FIN = max(meses_train)
+        exp.FOTO_MES_TEST_1 = mes_test1
+        exp.FOTO_MES_TEST_2 = mes_test2
+        exp.FOTO_MES_FINAL = mes_final
+        exp.FEATURE_ENGINEERING_LAGS = False
+        exp.df_inicial = df
 
-    # No quiero lags – ya los genero en BQ
-    exp.FEATURE_ENGINEERING_LAGS = False
+        # 4. Ejecutar workflow completo
+        logger.info("Iniciando ejecución del workflow...")
+        pred_final, df_testing, df_resultados, p1, p2, path = exp.main()
 
-    # Pasamos el dataframe manualmente
-    exp.df_inicial = df
+        logger.info(f"Experimento finalizado exitosamente")
+        logger.info(f"Outputs guardados en: {path}")
 
-    # 4. Ejecutar workflow completo
-    pred_final, df_testing, df_resultados, p1, p2, path = exp.main()
+        return path
 
-    print(f"\n✔ Finalizado: {nombre}")
-    print(f"   Outputs en: {path}")
-    return path
+    except Exception as e:
+        logging.error(f"Error durante la ejecución del experimento: {str(e)}", exc_info=True)
+        raise
 
 
 # =============================
