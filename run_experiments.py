@@ -107,7 +107,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
     try:
         # 2. Cargar datos de BigQuery
         logger.info("Iniciando carga de datos desde BigQuery...")
-        df = select_data_lags_deltas(meses_total,config.COLUMNAS_EXCLUIR,config.exp,2)
+        df = select_data_lags_deltas('c02_delta',config.COLUMNAS_EXCLUIR,meses_total,2)
         logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
 
         # 3. Configurar workflow
