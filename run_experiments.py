@@ -68,7 +68,7 @@ def select_data_lags_deltas(tabla, columnas_excluir,meses, k):
 
     query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{tabla}`
     where foto_mes in ({meses})"""
-
+    logger.info(f"Query: {query}")
     job = client.query(query)
 
     # Uso Storage API para traer Arrow más rápido
@@ -121,8 +121,14 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
 
         # 4. Ejecutar workflow completo
         logger.info("Iniciando ejecución del workflow...")
-        pred_final, df_testing, df_resultados, p1, p2, path = exp.main()
-
+        # Ejecutar workflow completo usando df y meses explícitos
+        pred_final, df_testing, df_resultados, p1, p2, path = exp.main(
+            df=df,
+            meses_train=meses_train,
+            mes_test1=mes_test1,
+            mes_test2=mes_test2,
+            mes_final=mes_final,
+        )
         logger.info(f"Experimento finalizado exitosamente")
         logger.info(f"Outputs guardados en: {path}")
 
