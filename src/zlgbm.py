@@ -388,6 +388,7 @@ def agregar_canaritos(df, num_canaritos=None, semilla=None):
     original_cols = list(df.columns)
 
     # Convertimos a Polars
+
     df_pl = pl.from_pandas(df)
 
     # Generamos matriz aleatoria
@@ -1012,6 +1013,8 @@ def main(df=None, meses_train=None, mes_test1=None, mes_test2=None, mes_final=No
     else:
         logger.info("Usando DataFrame provisto externamente (BigQuery / runner).")
         logger.info(f"Shape df externo: {df.shape}")
+        # transformo df de polasrs a pandas
+        df = df.to_pandas()
 
     # Calcular clase_ternaria solo si no existe
     if "clase_ternaria" not in df.columns:
