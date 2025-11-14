@@ -86,7 +86,7 @@ try:
     BQ_TABLE = _cfg2.get("BQ_TABLE", None)
     BQ_TABLE_TARGETS = _cfg2.get("BQ_TABLE_TARGETS", None)
 
-    COLUMNAS_EXCLUIR = _cfg.get("COLUMNAS_EXCLUIR", [])
+    COLUMNAS_EXCLUIR = pr.get("COLUMNAS_EXCLUIR", [])
 
 
 except Exception as e:

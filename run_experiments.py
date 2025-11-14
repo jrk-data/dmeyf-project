@@ -64,7 +64,7 @@ def select_data_lags_deltas(tabla, columnas_excluir,meses, k):
     client = bigquery.Client(project=config.BQ_PROJECT)
     bqstorage_client = bigquery_storage.BigQueryReadClient()
 
-    #meses =  ", ".join(str(int(m)) for m in meses)
+    meses =  ", ".join(str(int(m)) for m in meses)
 
     query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{tabla}`
     where foto_mes in ({meses})"""
@@ -107,7 +107,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
     try:
         # 2. Cargar datos de BigQuery
         logger.info("Iniciando carga de datos desde BigQuery...")
-        df = select_data_lags_deltas(meses_total,config.COLUMNAS_EXCLUIR,2)
+        df = select_data_lags_deltas(meses_total,config.COLUMNAS_EXCLUIR,config.exp,2)
         logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
 
         # 3. Configurar workflow

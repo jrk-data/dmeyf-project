@@ -49,7 +49,8 @@ preprocessing:
   SUB_SAMPLE: 0.4
   NUN_WINDOW_LOAD: 5
   NUN_WINDOW: 3
-
+  COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
+                     'mprestamos_personales','cprestamos_personales']
 
 # ------------------------------------------------------------------
 
