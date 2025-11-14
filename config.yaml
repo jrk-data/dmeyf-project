@@ -98,7 +98,7 @@ competencia01:
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   NUEVA_BASE: false
-  START_POINT: "PREDICT"        # o "PREDICT" según etapa
+  START_POINT: "TRAIN"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: true       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 5
