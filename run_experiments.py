@@ -1,7 +1,10 @@
 import src.zlgbm as exp
 from google.cloud import bigquery, bigquery_storage
 import pandas as pd
+import polars as pl
 import logging
+import re
+import src.config as config
 from src.loader import select_data_c02
 # Configurar logging
 logging.basicConfig(
@@ -22,20 +25,60 @@ client = bigquery.Client(project=PROJECT)
 bqstorage_client = bigquery_storage.BigQueryReadClient()
 
 
-def cargar_bigquery(meses):
-    query = f"""
-    SELECT *
-    FROM `{PROJECT}.{DATASET}.{TABLE}`
-    WHERE foto_mes IN ({",".join(map(str, meses))})
-    """
-    logger.info(f"Cargando datos desde BigQuery: {query}")
-    df = (
-        client.query(query)
-        .result()
-        .to_dataframe(bqstorage_client=bqstorage_client)
-    )
-    logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
-    return df
+def _select_table_schema(project, dataset, table):
+    client = bigquery.Client(project=project)
+    t = client.get_table(f"{project}.{dataset}.{table}")
+    cols = [f.name for f in t.schema]
+    return cols
+
+def _columns_filter(cols, pattern):
+    '''
+    Se ingresa todas las columnas y las que se quiere eliminar.
+    Devuelve array con columnas a seleccionar.
+    '''
+    combined_pattern = "(" + "|".join(re.escape(p) for p in pattern) + ")"
+
+    columns_to_keep = list(filter(lambda c: not re.search(combined_pattern, c), cols))
+
+    return columns_to_keep
+
+def _filter_lags_deltas(cols, k):
+    filtradas = []
+    for c in cols:
+        # Si es lag o delta hasta 5
+        if '_lag_' not in c and '_delta_' not in c:
+            filtradas.append(c)
+        elif re.search(rf'_lag_[1-{k}]$', c) or re.search(rf'_delta_[1-{k}]$', c):
+            filtradas.append(c)
+    return filtradas
+
+def select_data_lags_deltas(tabla, columnas_excluir,meses, k):
+    'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
+    logger.info(f"meses: {meses}")
+
+    schema_table = _select_table_schema(config.BQ_PROJECT, config.BQ_DATASET, tabla)
+    schema_table = _columns_filter(schema_table, columnas_excluir)
+
+    columns = _filter_lags_deltas(schema_table, k)
+
+    client = bigquery.Client(project=config.BQ_PROJECT)
+    bqstorage_client = bigquery_storage.BigQueryReadClient()
+
+    #meses =  ", ".join(str(int(m)) for m in meses)
+
+    query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{tabla}`
+    where foto_mes in ({meses})"""
+
+    job = client.query(query)
+
+    # Uso Storage API para traer Arrow más rápido
+    arrow_table = job.result().to_arrow(bqstorage_client=bqstorage_client)
+    df_pl = pl.from_arrow(arrow_table)
+    return df_pl
+
+
+
+
 
 
 # =============================
@@ -64,7 +107,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
     try:
         # 2. Cargar datos de BigQuery
         logger.info("Iniciando carga de datos desde BigQuery...")
-        df = select_data_c02(meses_total)
+        df = select_data_lags_deltas(meses_total,config.COLUMNAS_EXCLUIR,2)
         logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
 
         # 3. Configurar workflow

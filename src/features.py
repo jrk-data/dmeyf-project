@@ -185,7 +185,7 @@ def creation_deltas(columnas, cant_lag):
     delta_exprs = []
     for col in columnas:
         for k in range(1, cant_lag+1):
-            delta_exprs.append(f"SAFE_CAST({col} AS FLOAT64) - SAFE_CAST({col}_lag_{k} AS FLOAT64) AS {col}_{k}")
+            delta_exprs.append(f"SAFE_CAST({col} AS FLOAT64) - SAFE_CAST({col}_lag_{k} AS FLOAT64) AS {col}_delta_{k}")
             # opcional %:
             # delta_exprs.append(f"SAFE_DIVIDE(SAFE_CAST({col} AS FLOAT64) - SAFE_CAST({col}_lag{k} AS FLOAT64), NULLIF(SAFE_CAST({col}_lag{k} AS FLOAT64), 0)) AS {col}_d{k}_pct")
 
