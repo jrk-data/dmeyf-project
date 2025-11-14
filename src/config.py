@@ -70,7 +70,7 @@ try:
     MES_TRAIN = _cfg2.get("MONTH_TRAIN", [202102])
     MES_VALIDACION = _cfg2.get("MONTH_VALIDATION", [202103])
     MES_TEST = _cfg2.get("MONTH_TEST", [202104])
-    MES_PRED = _cfg2.get("MONTH_PRED", [202105])
+    MES_PRED = exp.get("MONTH_PRED", [202106])
     TARGET = _cfg2.get("TARGET", "target")
     ID_COL = _cfg2.get("ID_COL", "id")
 
