@@ -173,8 +173,8 @@ def main():
                 data = select_data_lags_deltas(
                     table_with_deltas,
                     mes_train_s,
-                    mes_test_s,
-                    mes_pred_s,
+                    [mes_test_s],
+                    [mes_pred_s],
                     k=config.NUN_WINDOW
                 )
 
