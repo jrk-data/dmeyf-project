@@ -193,7 +193,7 @@ def select_data_c02( MESES):
     try:
         PROJECT= config.BQ_PROJECT
         DATASET = config.BQ_DATASET
-        TABLE = 'c02_delta'
+        TABLE = 'c02'
         # extraigo meses de la lista y concateno en string
         if isinstance(MESES, (list, tuple)):
             MESES = ", ".join(map(str, MESES))
