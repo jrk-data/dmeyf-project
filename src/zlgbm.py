@@ -1024,10 +1024,10 @@ def main(df=None, meses_train=None, mes_test1=None, mes_test2=None, mes_final=No
         df = _coerce_object_cols(df)
 
     # Calcular clase_ternaria solo si no existe
-    if "clase_ternaria" not in df.columns:
+    if "clase_ternaria" not in df.columns or df["clase_ternaria"].isna().all():
         df = calcular_clase_ternaria(df)
     else:
-        logger.info("Columna 'clase_ternaria' ya existe en df; se reutiliza sin recalcular.")
+        logger.info("Columna 'clase_ternaria' ya existe y contiene valores.")
 
     # Agregar canaritos
     df = agregar_canaritos(df, QCANARITOS)

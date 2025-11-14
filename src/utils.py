@@ -54,6 +54,11 @@ def _coerce_object_cols(df: pd.DataFrame) -> pd.DataFrame:
     rem_obj_cols = df.select_dtypes(include=["object"]).columns.tolist()
     if rem_obj_cols:
         for c in rem_obj_cols:
-            df[c] = pd.to_numeric(df[c].str.replace(",", ".", regex=False), errors="coerce").astype("float32")
+            if c == "clase_ternaria":
+                continue  # NO tocar el target
+            df[c] = pd.to_numeric(
+                df[c].str.replace(",", ".", regex=False),
+                errors="coerce"
+            ).astype("float32")
 
     return df
