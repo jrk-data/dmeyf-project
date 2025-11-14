@@ -1,7 +1,15 @@
 # src/reporting.py
+import logging
 import numpy as np
 import pandas as pd
 from datetime import datetime
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Usar los mismos valores que en tu proyecto
 GANANCIA_ACIERTO = 25000  # o desde config
@@ -36,28 +44,48 @@ def compute_gain_model(
         threshold_opt   : float
         curva_ganancia  : np.ndarray (cumsum a lo largo del ranking)
     """
-    # vector de ganancias por registro
-    ganancia = (
-        np.where(weight == 1.00002, ganancia_acierto, 0.0)
-        - np.where(weight < 1.00002, costo_estimulo, 0.0)
-    )
+    logger.info("=== Iniciando compute_gain_model ===")
+    logger.info(f"Shape y_pred: {y_pred.shape}, Shape weight: {weight.shape}")
+    logger.info(f"Ganancia acierto: {ganancia_acierto}, Costo estímulo: {costo_estimulo}")
+    
+    try:
+        # vector de ganancias por registro
+        logger.debug("Calculando vector de ganancias por registro")
+        ganancia = (
+            np.where(weight == 1.00002, ganancia_acierto, 0.0)
+            - np.where(weight < 1.00002, costo_estimulo, 0.0)
+        )
+        logger.debug(f"Ganancia calculada - Min: {ganancia.min()}, Max: {ganancia.max()}, Sum: {ganancia.sum()}")
 
-    # ordenar de mayor a menor probabilidad
-    order = np.argsort(y_pred)[::-1]
-    gan_ord = ganancia[order]
-    y_pred_sorted = y_pred[order]
+        # ordenar de mayor a menor probabilidad
+        logger.debug("Ordenando por probabilidad descendente")
+        order = np.argsort(y_pred)[::-1]
+        gan_ord = ganancia[order]
+        y_pred_sorted = y_pred[order]
+        logger.debug(f"y_pred_sorted - Max: {y_pred_sorted[0]}, Min: {y_pred_sorted[-1]}")
 
-    curva = np.cumsum(gan_ord)
-    ganancia_modelo = float(np.max(curva))
-    k_optimo = int(np.argmax(curva) + 1)
-    threshold_opt = float(y_pred_sorted[k_optimo - 1])
+        # Calcular curva de ganancia acumulada
+        logger.debug("Calculando curva de ganancia acumulada")
+        curva = np.cumsum(gan_ord)
+        ganancia_modelo = float(np.max(curva))
+        k_optimo = int(np.argmax(curva) + 1)
+        threshold_opt = float(y_pred_sorted[k_optimo - 1])
 
-    return {
-        "ganancia_modelo": ganancia_modelo,
-        "k_optimo": k_optimo,
-        "threshold_opt": threshold_opt,
-        "curva_ganancia": curva,
-    }
+        logger.info(f"Ganancia modelo: {ganancia_modelo:,.2f}")
+        logger.info(f"K óptimo: {k_optimo}")
+        logger.info(f"Threshold óptimo: {threshold_opt:.6f}")
+        logger.info("=== Finalizando compute_gain_model exitosamente ===")
+
+        return {
+            "ganancia_modelo": ganancia_modelo,
+            "k_optimo": k_optimo,
+            "threshold_opt": threshold_opt,
+            "curva_ganancia": curva,
+        }
+    
+    except Exception as e:
+        logger.error(f"Error en compute_gain_model: {str(e)}", exc_info=True)
+        raise
 
 
 def compute_gain_max_possible(
@@ -71,10 +99,23 @@ def compute_gain_max_possible(
 
     En ese caso, la ganancia máxima = (#positivos) * GANANCIA_ACIERTO
     """
-    n_positivos = int(np.sum(weight == 1.00002))
-    gan_max = float(n_positivos * ganancia_acierto)
-    return gan_max, n_positivos
-
+    logger.info("=== Iniciando compute_gain_max_possible ===")
+    logger.info(f"Shape weight: {weight.shape}")
+    logger.info(f"Ganancia acierto: {ganancia_acierto}")
+    
+    try:
+        n_positivos = int(np.sum(weight == 1.00002))
+        logger.info(f"Número de positivos detectados: {n_positivos}")
+        
+        gan_max = float(n_positivos * ganancia_acierto)
+        logger.info(f"Ganancia máxima posible: {gan_max:,.2f}")
+        logger.info("=== Finalizando compute_gain_max_possible exitosamente ===")
+        
+        return gan_max, n_positivos
+    
+    except Exception as e:
+        logger.error(f"Error en compute_gain_max_possible: {str(e)}", exc_info=True)
+        raise
 
 
 def generar_reporte_html_ganancia(
@@ -112,7 +153,7 @@ def generar_reporte_html_ganancia(
         ganancia_acierto=ganancia_acierto,
         costo_estimulo=costo_estimulo,
     )
-
+    
     gan_modelo = res_model["ganancia_modelo"]
     k_optimo = res_model["k_optimo"]
     thr_opt = res_model["threshold_opt"]
