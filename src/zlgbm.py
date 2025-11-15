@@ -18,7 +18,7 @@ from datetime import datetime
 from sklearn.utils import resample
 import warnings
 from src.utils import _coerce_object_cols
-
+import src.config as conf
 warnings.filterwarnings('ignore')
 
 # Configurar logging
@@ -42,8 +42,8 @@ GANANCIA_ACIERTO = 780000
 # -----------------------------
 # Experimento
 # -----------------------------
-EXPERIMENTO = "apo-506"
-SEMILLA_PRIMIGENIA = 102191
+EXPERIMENTO = "estacionalidad-2"
+SEMILLA_PRIMIGENIA = 125355
 APO = 1
 KSEMILLERIO = 1
 
@@ -78,7 +78,7 @@ SEMILLAS_FINAL = 100        # Para predicción final
 QCANARITOS = 5  # Cantidad de variables aleatorias (canaritos)
 
 # Lags y Deltas
-FEATURE_ENGINEERING_LAGS = True  # Activar/desactivar lags y deltas
+FEATURE_ENGINEERING_LAGS = False  # Activar/desactivar lags y deltas
 LAGS_ORDEN = [1, 2]  # Órdenes de lags a crear (1 y 2)
 # Si LAGS_ORDEN = [1, 2, 3] creará lag1, lag2, lag3 y delta1, delta2, delta3
 
@@ -86,7 +86,7 @@ LAGS_ORDEN = [1, 2]  # Órdenes de lags a crear (1 y 2)
 # Undersampling
 # -----------------------------
 UNDERSAMPLING = True
-UNDERSAMPLING_RATIO = 0.1  # Proporción de clase mayoritaria a mantener (0.1 = 10%)
+UNDERSAMPLING_RATIO = 0.05  # Proporción de clase mayoritaria a mantener (0.1 = 10%)
 # Si es 0.1, mantenemos solo 10% de CONTINUA y todos los BAJA+1 y BAJA+2
 
 # -----------------------------
@@ -94,7 +94,7 @@ UNDERSAMPLING_RATIO = 0.1  # Proporción de clase mayoritaria a mantener (0.1 = 
 # -----------------------------
 MIN_DATA_IN_LEAF = 2000
 LEARNING_RATE = 1.0
-GRADIENT_BOUND = 0.01
+GRADIENT_BOUND = 0.1
 NUM_LEAVES = 300
 FEATURE_FRACTION = 0.8
 BAGGING_FRACTION = 0.8
@@ -228,25 +228,25 @@ def crear_directorio(path):
     os.makedirs(path, exist_ok=True)
 
 
-def crear_directorio_experimento():
+def crear_directorio_experimento(nombre_experimento):
     """
     Crea directorio del experimento con timestamp
     Retorna la ruta completa
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    exp_path = os.path.join(BASE_PATH, f"{EXPERIMENTO}_{timestamp}")
+    exp_path = os.path.join(BASE_PATH, f"{nombre_experimento}_{timestamp}")
     crear_directorio(exp_path)
     logger.info(f"Directorio del experimento: {exp_path}")
     return exp_path
 
 
-def guardar_configuracion(exp_path):
+def guardar_configuracion(exp_path,nombre_experimento):
     """
     Guarda todos los parámetros configurados en un archivo JSON
     """
     config = {
         "metadata": {
-            "experimento": EXPERIMENTO,
+            "experimento": nombre_experimento,
             "timestamp": datetime.now().isoformat(),
             "fecha_ejecucion": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         },
@@ -271,6 +271,7 @@ def guardar_configuracion(exp_path):
             "ksemillerio": KSEMILLERIO
         },
         "feature_engineering": {
+            "columnas_excluidas": conf.COLUMNAS_EXCLUIR,
             "qcanaritos": QCANARITOS,
             "lags_enabled": FEATURE_ENGINEERING_LAGS,
             "lags_orden": LAGS_ORDEN
@@ -972,7 +973,7 @@ def generar_submissions(predicciones, exp_path, cortes=None, sufijo=""):
 # WORKFLOW PRINCIPAL
 # ============================================================================
 
-def main(df=None, meses_train=None, mes_test1=None, mes_test2=None, mes_final=None):
+def main(nombre_experimento=None,df=None, meses_train=None, mes_test1=None, mes_test2=None, mes_final=None):
 
     """Función principal del workflow de 3 etapas"""
     print("="*80)
@@ -993,7 +994,7 @@ def main(df=None, meses_train=None, mes_test1=None, mes_test2=None, mes_final=No
     # ========================================================================
     # CREAR DIRECTORIO CON TIMESTAMP Y GUARDAR CONFIGURACIÓN
     # ========================================================================
-    exp_path = crear_directorio_experimento()
+    exp_path = crear_directorio_experimento(nombre_experimento)
     config_path = guardar_configuracion(exp_path)
     logger.info(f"Configuración guardada en: {config_path}\n")
     

@@ -106,7 +106,7 @@ flags:
   TOP_K_MODEL: 5
 
 experiment:
-  STUDY_NAME_OPTUNA: "experimento_estacional_junio_01"
+  STUDY_NAME_OPTUNA: "exp_zlgbm_estacional"
 
   # Meses de entrenamiento (los que vas a correr en este job)
   MONTH_TRAIN: [201901, 201902,201903,201904,201906, 202001, 202002,202003,202004,202006, 202101, 202102, 202103, 202104]

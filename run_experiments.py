@@ -104,6 +104,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
     meses_total = sorted(list(set(meses_train + [mes_test1, mes_test2, mes_final])))
     logger.info(f"Meses totales a procesar: {meses_total}")
 
+    nombre_experimento = f"{nombre}_{mes_test1}_{mes_test2}_{mes_final}"
     try:
         # 2. Cargar datos de BigQuery
         logger.info("Iniciando carga de datos desde BigQuery...")
@@ -123,6 +124,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
         logger.info("Iniciando ejecución del workflow...")
         # Ejecutar workflow completo usando df y meses explícitos
         pred_final, df_testing, df_resultados, p1, p2, path = exp.main(
+            nombre_experimento = nombre,
             df=df,
             meses_train=meses_train,
             mes_test1=mes_test1,
