@@ -33,7 +33,7 @@ def _select_table_schema(project, dataset, table):
 
 def _columns_filter(cols, pattern):
     '''
-    Se ingresa todas las columnas y las que se quiere eliminar.
+    Se ingresa todas las columnas que se quiere eliminar.
     Devuelve array con columnas a seleccionar.
     '''
     combined_pattern = "(" + "|".join(re.escape(p) for p in pattern) + ")"

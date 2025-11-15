@@ -725,44 +725,37 @@ def etapa_testing(df_train, df_test1, df_test2, feature_cols, exp_path):
         guardar_modelo_individual(modelo, semilla, exp_path)
         modelos_entrenados.append(modelo)
 
-        # Predicciones
+        # Predicciones (probabilidades continuas)
         y_pred_test1 = modelo.predict(X_test1)
         y_pred_test2 = modelo.predict(X_test2)
 
+        # Acumulamos probs para el ensamble
         pred_acum_test1 += y_pred_test1
         pred_acum_test2 += y_pred_test2
 
-        df_pred_test1 = pd.DataFrame({
-            'y_true': y_test1.values,
-            'y_pred': y_pred_test1
-        }).sort_values('y_pred', ascending=False).reset_index(drop=True)
+        # Calculamos UNA sola vez la curva de ganancia acumulada con probs continuas
+        _, gan_acum_test1 = calcular_ganancia(
+            y_pred=y_pred_test1,
+            y_true=y_test1.values
+        )
+        _, gan_acum_test2 = calcular_ganancia(
+            y_pred=y_pred_test2,
+            y_true=y_test2.values
+        )
 
-        df_pred_test2 = pd.DataFrame({
-            'y_true': y_test2.values,
-            'y_pred': y_pred_test2
-        }).sort_values('y_pred', ascending=False).reset_index(drop=True)
-
-        # Ganancias por corte
+        # Ganancias por corte SIN re-optimizar internamente
         for idx_c, corte in enumerate(CORTES):
             # Test 1
-            n_envios = min(corte, len(df_pred_test1))
-            df_pred_test1['pred_binary'] = 0
-            df_pred_test1.iloc[:n_envios, df_pred_test1.columns.get_loc('pred_binary')] = 1
-            g1, _ = calcular_ganancia(
-                y_pred=df_pred_test1['pred_binary'].values,
-                y_true=df_pred_test1['y_true'].values
+            n_envios = min(corte, len(gan_acum_test1))
+            matriz_gan_test1[idx_sem, idx_c] = (
+                gan_acum_test1[n_envios - 1] if n_envios > 0 else 0
             )
-            matriz_gan_test1[idx_sem, idx_c] = g1
 
             # Test 2
-            n_envios = min(corte, len(df_pred_test2))
-            df_pred_test2['pred_binary'] = 0
-            df_pred_test2.iloc[:n_envios, df_pred_test2.columns.get_loc('pred_binary')] = 1
-            g2, _ = calcular_ganancia(
-                y_pred=df_pred_test2['pred_binary'].values,
-                y_true=df_pred_test2['y_true'].values
+            n_envios = min(corte, len(gan_acum_test2))
+            matriz_gan_test2[idx_sem, idx_c] = (
+                gan_acum_test2[n_envios - 1] if n_envios > 0 else 0
             )
-            matriz_gan_test2[idx_sem, idx_c] = g2
 
         del modelo
         limpiar_memoria()
