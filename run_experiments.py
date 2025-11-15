@@ -160,12 +160,12 @@ ejecutar_experimento(
 # =============================
 # EXPERIMENTO 2
 # =============================
-meses_train_exp2 = list(range(202004, 202103))
+meses_train_exp2 = [m for m in range(202004, 202103) if m != 202006]
 
 ejecutar_experimento(
     "EXPERIMENTO_NO_ESTACIONAL_ZLGBM",
     meses_train_exp2,
-    mes_test1=202004,
-    mes_test2=202006,
-    mes_final=202008
+    mes_test1=202104,
+    mes_test2=202106,
+    mes_final=202108
 )
