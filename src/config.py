@@ -48,7 +48,7 @@ try:
     EARLY_STOPPING_ROUNDS = int(opt.get("EARLY_STOPPING_ROUNDS", 0))  # 0 = no usar
     N_BOOSTS = 1000
     # --- Preprocessing ----
-
+    PSI_2021_FEATURES = pr.get("PSI_2021_FEATURES", None)
     SUB_SAMPLE = pr.get("SUB_SAMPLE", None) # si es None, no se hace sub-sampling
     NUN_WINDOW_LOAD = pr.get("NUN_WINDOW_LOAD", 5)
     NUN_WINDOW =  pr.get("NUN_WINDOW", 3)

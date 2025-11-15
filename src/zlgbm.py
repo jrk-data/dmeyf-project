@@ -271,6 +271,7 @@ def guardar_configuracion(exp_path,nombre_experimento):
             "ksemillerio": KSEMILLERIO
         },
         "feature_engineering": {
+            "columnas_psi_identificadas": conf.PSI_2021_FEATURES,
             "columnas_excluidas": conf.COLUMNAS_EXCLUIR,
             "qcanaritos": QCANARITOS,
             "lags_enabled": FEATURE_ENGINEERING_LAGS,

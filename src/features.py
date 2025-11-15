@@ -224,6 +224,81 @@ def _filter_lags_deltas(cols, k):
             filtradas.append(c)
     return filtradas
 
+def _build_momentum_alter_update_script(
+    table_id: str,
+    feature_names: list[str],
+    max_delta: int = 3,
+    column_type: str = "FLOAT64",
+) -> str:
+    """
+    Genera un script de BigQuery que:
+      1) Agrega columnas *_momentum_ponderado a la tabla.
+      2) Actualiza esas columnas con el cálculo de momentum ponderado
+         en base a los deltas *_delta_1..*_delta_max_delta.
+
+    Args:
+        table_id: ID completo de la tabla en BigQuery, ej: "proyecto.dataset.c02_delta".
+        feature_names: lista de features base, ej: ["edad", "altura"].
+        max_delta: cantidad de deltas disponibles (ej. 3 → _delta_1.._delta_3).
+        column_type: tipo de dato de la nueva columna (por defecto FLOAT64).
+
+    Returns:
+        str: script SQL listo para ejecutar en BigQuery.
+    """
+
+    alter_statements = []
+    update_assignments = []
+
+    for feat in feature_names:
+        # nombre de la nueva columna
+        alias = f"{feat}_momentum_ponderado"
+
+        # construyo la expresión de momentum ponderado
+        terms = []
+        # pesos: max_delta para delta_1, ..., 1 para delta_max_delta
+        for k in range(1, max_delta + 1):
+            weight = max_delta - k + 1
+            col_name = f"{feat}_delta_{k}"
+            terms.append(f"{weight} * {col_name}")
+
+        expr = " + ".join(terms)
+
+        # ALTER TABLE para agregar la columna (si no existe)
+        alter_statements.append(
+            f"ALTER TABLE `{table_id}` "
+            f"ADD COLUMN IF NOT EXISTS {alias} {column_type};"
+        )
+
+        # assignment para el UPDATE
+        update_assignments.append(f"  {alias} = {expr}")
+
+    # Bloque de ALTERs (uno por columna)
+    alter_block = "\n".join(alter_statements)
+
+    # Bloque de UPDATE (un único UPDATE seteando todas)
+    update_block = ",\n".join(update_assignments)
+
+    script = f"""
+{alter_block}
+
+UPDATE `{table_id}`
+SET
+{update_block} where 1 = 1;
+"""
+    return script.strip()
+
+def create_momentums_deltas():
+    query = _build_momentum_alter_update_script(table_id=f"{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_delta", feature_names= config.pr.PSI_2021_FEATURES)
+
+    try:
+        client = bigquery.Client(project=config.BQ_PROJECT)
+        # print("Ejecutando consulta en BigQuery...")
+        query_job = client.query(query)
+        results = query_job.result()
+    except Exception as e:
+        logger.error(f"Error en la consulta a BigQuery: {e}")
+        pass
+
 def select_data_lags_deltas(tabla, mes_train, mes_test_lista,mes_pred_lista, k):
     'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
     mes_test =  mes_test_lista[0]
