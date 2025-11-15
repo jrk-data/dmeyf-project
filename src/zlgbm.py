@@ -996,7 +996,7 @@ def main(nombre_experimento=None,df=None, meses_train=None, mes_test1=None, mes_
     # CREAR DIRECTORIO CON TIMESTAMP Y GUARDAR CONFIGURACIÓN
     # ========================================================================
     exp_path = crear_directorio_experimento(nombre_experimento)
-    config_path = guardar_configuracion(exp_path)
+    config_path = guardar_configuracion(exp_path,nombre_experimento)
     logger.info(f"Configuración guardada en: {config_path}\n")
     
     # ========================================================================
