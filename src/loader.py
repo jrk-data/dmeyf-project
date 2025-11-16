@@ -27,10 +27,15 @@ def select_c02_polars(path_csv_competencia_2):
         )
         schema_actual = df.schema
 
+        # schema_modificado = {
+        #     col: (pl.Float64 if (col.startswith("m") or "_m" in col) and col != 'foto_mes' and dtype == pl.Int64 else dtype)
+        #     for col, dtype in schema_actual.items()
+        # }
         schema_modificado = {
             col: (pl.Float64 if (col.startswith("m") or "_m" in col) and col != 'foto_mes' and dtype == pl.Int64 else dtype)
             for col, dtype in schema_actual.items()
         }
+
     except Exception as e:
         logger.error(f'Error al crear schema: {e}')
         raise

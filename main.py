@@ -63,6 +63,7 @@ from src.loader import (
 )
 from src.features import (
     get_numeric_columns_pl, feature_engineering_lag, feature_engineering_delta, creation_lags, creation_deltas, select_data_lags_deltas
+, create_ipc_adjusted_table
 )
 from src.optimization import (run_study, run_study_cv, create_seed)
 from src.preprocessing import binary_target, split_train_data, create_binary_target_column
@@ -85,24 +86,28 @@ def main():
             logger.info("Creando nueva base de datos...")
 
             # Selecciono datos crudos
-            data = select_c02_polars(config.DATA_PATH)
+            #data = select_c02_polars(config.DATA_PATH)
 
             # Creo tabla en BQ a partir de datos Crudos
-            create_bq_table_c02(data, config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE)
+            #create_bq_table_c02(data, config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE)
 
             # Creo targets
-            create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
+            #create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
 
             # Creo q_productos_cliente_mes
             # Acá filtro los meses que no van a entrar
             tabla_productos_por_cliente(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS) #uso c02 y targets para joinear t crear c02_productos
 
             # ----------- Obtengo algunos datos para obtener tipos de columnas -------------
-            data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, 'c02_products', [202102])
+            data = select_data_c02([202102])
             # Columnas a excluir
             exclude_cols = ["numero_de_cliente", "foto_mes", "clase_binaria1", "clase_binaria2", "clase_peso"]
             # Creo array con columnas numéricas
             numeric_cols = get_numeric_columns_pl(data, exclude_cols=exclude_cols)
+
+            # Creo tabla c02_ipc
+            logger.info("Creando tabla c02_ipc...")
+            create_ipc_adjusted_table()
 
             # Creo tabla con lags
             logger.info(f"Creando lags n= {config.NUN_WINDOW_LOAD}...")

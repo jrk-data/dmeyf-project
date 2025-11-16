@@ -65,7 +65,6 @@ try:
     START_POINT = flag.get("START_POINT", "FEATURES")
 
 
-
     # ---- Competencia 02 ----
     MES_TRAIN = exp.get("MONTH_TRAIN", [202102])
     MES_VALIDACION = exp.get("MONTH_VALIDATION", [202103])

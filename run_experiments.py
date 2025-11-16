@@ -144,25 +144,25 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
 # =============================
 # EXPERIMENTO 1
 # =============================
-meses_train_exp1 = [
-    201901,201902,201903,201904,
-    202001,202002,202003,202004,
-    202101,202102
-]
-
-ejecutar_experimento(
-    "EXPERIMENTO_ESTACIONAL_ZLGBM",
-    meses_train_exp1,
-    mes_test1=202104,
-    mes_test2=202106,
-    mes_final=202108
-)
+# meses_train_exp1 = [
+#     201901,201902,201903,201904,
+#     202001,202002,202003,202004,
+#     202101,202102
+# ]
+#
+# ejecutar_experimento(
+#     "EXPERIMENTO_ESTACIONAL_ZLGBM",
+#     meses_train_exp1,
+#     mes_test1=202104,
+#     mes_test2=202106,
+#     mes_final=202108
+# )
 
 
 # =============================
 # EXPERIMENTO 2
 # =============================
-meses_train_exp2 = [m for m in range(202004, 202103) if m != 202006]
+meses_train_exp2 = [m for m in range(202001, 202103) if m != 202006]
 
 ejecutar_experimento(
     "EXPERIMENTO_NO_ESTACIONAL_ZLGBM",

@@ -137,6 +137,100 @@ def feature_engineering_delta(
 
 
 
+def create_ipc_adjusted_table(
+    source_table: str = "c02_products",
+    target_table: str = "c02_ipc",
+    ipc_table: str = "ipc_mensual",
+    mes_ini: int = 201901,
+    mes_fin: int = 202208,
+) -> None:
+    """
+    Crea/actualiza una tabla en BigQuery con todos los campos de `source_table`,
+    pero ajustando por IPC todas las columnas de montos.
+
+    Ajuste: monto_ajustado = monto_original / (ipc/100) del mes correspondiente.
+
+    - Columnas de montos: las que empiezan con:
+        * 'm'       (ej: mcuentas_saldo, mcuenta_corriente)
+        * 'VISA_m'  (case-insensitive)
+        * 'MASTER_m' (case-insensitive)
+
+    - La tabla resultante se llama `target_table`, queda en el mismo dataset,
+      particionada por foto_mes y clusterizada por numero_de_cliente.
+    """
+    client = bigquery.Client(project=config.BQ_PROJECT)
+
+    dataset_id = config.BQ_DATASET
+    project_id = config.BQ_PROJECT
+
+    # Nombre simple de la tabla fuente (sin proyecto/dataset)
+    source_table_name = source_table.split(".")[-1]
+    ipc_table_name = ipc_table.split(".")[-1]
+
+    # 1) Obtener la lista de columnas de montos desde INFORMATION_SCHEMA
+    schema_query = f"""
+    SELECT column_name
+    FROM `{project_id}.{dataset_id}.INFORMATION_SCHEMA.COLUMNS`
+    WHERE table_name = @table_name
+      AND (
+        -- Si empieza con m y NO empieza con master
+        (LOWER(column_name) LIKE 'm%' AND LOWER(column_name) NOT LIKE 'master%')
+
+        -- O si empieza con visa_m
+        OR LOWER(column_name) LIKE 'visa_m%'
+
+        -- O si empieza con master_m (columnas válidas)
+        OR LOWER(column_name) LIKE 'master_m%'
+      )
+    ORDER BY ordinal_position
+    """
+
+    schema_job = client.query(
+        schema_query,
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("table_name", "STRING", source_table_name)
+            ]
+        ),
+    )
+    monto_cols = [row["column_name"] for row in schema_job.result()]
+
+    if not monto_cols:
+        print(f"[create_ipc_adjusted_table] No se encontraron columnas de montos en {source_table_name}.")
+        return
+
+    print(f"[create_ipc_adjusted_table] Columnas de montos detectadas: {monto_cols}")
+
+    # 2) Armar lista de columnas a excluir del SELECT a.* EXCEPT(...)
+    except_list = ", ".join(f"`{col}`" for col in monto_cols)
+
+    # 3) Expresiones de columnas ajustadas
+    # monto_ajustado = monto / (ipc/100.0)
+    adjusted_exprs = ",\n      ".join(
+        f"SAFE_DIVIDE(a.{col}, (i.ipc/100.0)) AS {col}"
+        for col in monto_cols
+    )
+
+    # 4) Construir SQL final
+    sql = f"""
+    CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.{target_table}`
+    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY({mes_ini}, {mes_fin}, 1))
+    CLUSTER BY numero_de_cliente AS
+    SELECT
+      a.* EXCEPT({except_list}),
+      {adjusted_exprs}
+    FROM `{project_id}.{dataset_id}.{source_table_name}` AS a
+    LEFT JOIN `{project_id}.{dataset_id}.{ipc_table_name}` AS i
+      USING (foto_mes);
+    """
+
+    print("[create_ipc_adjusted_table] Ejecutando SQL:\n", sql)
+
+    job = client.query(sql)
+    job.result()
+
+
+
 def creation_lags(columnas: List[str], cant_lag: int = 1):
     """
     Crea/actualiza la tabla c02_lags con lags de 1..cant_lag para cada columna,
@@ -168,7 +262,7 @@ def creation_lags(columnas: List[str], cant_lag: int = 1):
     SELECT
     a.*,
       {select_list}
-    FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_products` AS a
+    FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_ipc` AS a
     """
 
     job_cfg = bigquery.QueryJobConfig(
