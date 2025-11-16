@@ -590,6 +590,8 @@ def preparar_datos_train_test_final(df, meses_train, mes_test1, mes_test2, mes_f
     cols_excluir = ['numero_de_cliente', 'foto_mes', 'clase_ternaria']
     feature_cols = [col for col in df_train.columns if col not in cols_excluir]
     logger.info(f"Features: {len(feature_cols)}")
+    logger.info(f"  {feature_cols}")
+
 
     return df_train, df_test1, df_test2, df_final, feature_cols
 
