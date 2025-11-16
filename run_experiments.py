@@ -72,7 +72,7 @@ def select_data_lags_deltas(tabla, columnas_excluir,meses, k):
 
     query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{tabla}`
     where foto_mes in ({meses})"""
-    logger.info(f"Query: {query}")
+    #logger.info(f"Query: {query}")
     job = client.query(query)
 
     # Uso Storage API para traer Arrow más rápido
@@ -167,7 +167,8 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
 # EXPERIMENTO 2
 # =============================
 meses_train_exp2 = [m for m in range(202001, 202103) if m != 202006]
-meses_train_exp2 = [202001]
+#meses_train_exp2 = [202001]
+
 ejecutar_experimento(
     "EXP_NO_ESTACIONAL_ZLGBM_IPC",
     meses_train_exp2,

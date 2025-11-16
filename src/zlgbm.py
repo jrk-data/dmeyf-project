@@ -590,7 +590,18 @@ def preparar_datos_train_test_final(df, meses_train, mes_test1, mes_test2, mes_f
     logger.info(f'Columnas de df_test2: {df_test2.columns.tolist()}')
 
     # Definir columnas de features
-    cols_excluir = ['numero_de_cliente', 'foto_mes', 'clase_ternaria']
+    cols_excluir = cols_excluir = [
+    'numero_de_cliente',
+    'foto_mes',
+    'clase_ternaria',
+    'clase_binaria',
+    'clase_peso',
+    # por si en alguna versión tenés otras variantes:
+    'clase_ternaria_binaria2',
+    'clase_binaria1',
+    'clase_binaria2',
+]
+
     feature_cols = [col for col in df_train.columns if col not in cols_excluir]
     logger.info(f"Features: {len(feature_cols)}")
     logger.info(f"  {feature_cols}")
