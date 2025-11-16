@@ -450,7 +450,7 @@ def agregar_lags_y_deltas(df, ordenes=None):
     
     # Identificar columnas lagueables
     # Todo es lagueable MENOS: numero_de_cliente, foto_mes, clase_ternaria, canaritos
-    cols_excluir = ['numero_de_cliente', 'foto_mes', 'clase_ternaria']
+    cols_excluir = ['numero_de_cliente', 'foto_mes', 'clase_ternaria','clase_binaria','clase_peso']
     cols_excluir += [f'canarito{i}' for i in range(1, QCANARITOS + 1)]
     
     cols_lagueables = [col for col in df.columns if col not in cols_excluir]
@@ -585,6 +585,9 @@ def preparar_datos_train_test_final(df, meses_train, mes_test1, mes_test2, mes_f
     # Aplicar undersampling solo a train
     if UNDERSAMPLING:
         df_train = aplicar_undersampling(df_train)
+    logger.info(f'Columnas de df_train: {df_train.columns.tolist()}')
+    logger.info(f'Columnas de df_test1: {df_test1.columns.tolist()}')
+    logger.info(f'Columnas de df_test2: {df_test2.columns.tolist()}')
 
     # Definir columnas de features
     cols_excluir = ['numero_de_cliente', 'foto_mes', 'clase_ternaria']
