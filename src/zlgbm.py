@@ -431,7 +431,6 @@ def agregar_lags_y_deltas(df, ordenes=None):
     Args:
         df: DataFrame con los datos
         ordenes: Lista de órdenes de lags a crear (ej: [1, 2])
-    
     Returns:
         DataFrame con lags y deltas agregados
     """
