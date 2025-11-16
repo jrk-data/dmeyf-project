@@ -592,7 +592,6 @@ def preparar_datos_train_test_final(df, meses_train, mes_test1, mes_test2, mes_f
     logger.info(f"Features: {len(feature_cols)}")
     logger.info(f"  {feature_cols}")
 
-
     return df_train, df_test1, df_test2, df_final, feature_cols
 
 
