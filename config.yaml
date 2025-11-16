@@ -53,6 +53,7 @@ preprocessing:
   #                   'mprestamos_personales','cprestamos_personales']
 #  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales','Master_Finiciomora',
 #'Master_Fvencimiento','Visa_Finiciomora']
+  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales']
 
   PSI_2021_FEATURES: ['Master_Fvencimiento',
 'Master_fultimo_cierre',
