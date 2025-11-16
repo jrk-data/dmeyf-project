@@ -167,7 +167,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
 # EXPERIMENTO 2
 # =============================
 meses_train_exp2 = [m for m in range(202001, 202103) if m != 202006]
-
+meses_train_exp2 = [202001]
 ejecutar_experimento(
     "EXP_NO_ESTACIONAL_ZLGBM_IPC",
     meses_train_exp2,

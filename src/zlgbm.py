@@ -585,6 +585,7 @@ def preparar_datos_train_test_final(df, meses_train, mes_test1, mes_test2, mes_f
     # Aplicar undersampling solo a train
     if UNDERSAMPLING:
         df_train = aplicar_undersampling(df_train)
+
     logger.info(f'Columnas de df_train: {df_train.columns.tolist()}')
     logger.info(f'Columnas de df_test1: {df_test1.columns.tolist()}')
     logger.info(f'Columnas de df_test2: {df_test2.columns.tolist()}')
