@@ -5,7 +5,9 @@ import polars as pl
 import logging
 import re
 import src.config as config
-from src.loader import select_data_c02
+from src.loader import (select_data_c02, select_c02_polars, create_bq_table_c02, create_targets_c02,tabla_productos_por_cliente)
+from src.features import (get_numeric_columns_pl, create_ipc_adjusted_table, creation_lags, creation_deltas)
+from src.preprocessing import create_binary_target_column
 # Configurar logging
 logging.basicConfig(
     level=logging.INFO,
@@ -109,6 +111,55 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
     logger.info(f"Meses totales a procesar: {meses_total}")
 
     nombre_experimento = f"{nombre}_{mes_test1}_{mes_test2}_{mes_final}"
+
+    if config.START_POINT == 'DATA' or config.CREAR_NUEVA_BASE:
+        logger.info("Creando nueva base de datos...")
+
+        # Selecciono datos crudos
+        data = select_c02_polars(config.DATA_PATH)
+
+        # Creo tabla en BQ a partir de datos Crudos
+        create_bq_table_c02(data, config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE)
+
+        # Creo targets
+        create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
+
+        # Creo q_productos_cliente_mes
+        # Acá filtro los meses que no van a entrar
+        tabla_productos_por_cliente(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE,
+                                    config.BQ_TABLE_TARGETS)  # uso c02 y targets para joinear t crear c02_productos
+
+        # ----------- Obtengo algunos datos para obtener tipos de columnas -------------
+        data = select_data_c02([202102])
+        # Columnas a excluir
+        exclude_cols = ["numero_de_cliente", "foto_mes", "clase_binaria", "clase_binaria1", "clase_binaria2", "clase_peso"]
+        # Creo array con columnas numéricas
+        numeric_cols = get_numeric_columns_pl(data, exclude_cols=exclude_cols)
+
+        # Creo tabla c02_ipc
+        logger.info("Creando tabla c02_ipc...")
+        create_ipc_adjusted_table()
+
+        # Creo tabla con lags
+        logger.info(f"Creando lags n= {config.NUN_WINDOW_LOAD}...")
+        creation_lags(numeric_cols, config.NUN_WINDOW_LOAD)
+
+        # Creo tabla con deltas
+        logger.info("Creando deltas...")
+        creation_deltas(numeric_cols, config.NUN_WINDOW_LOAD)
+
+        # Binarizando target
+        logger.info("Binarizando target...")
+        table_with_deltas = 'c02_delta'
+        create_binary_target_column(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas)
+
+    # Selecciono los datos de los meses que se van a trabajar
+    # data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas, meses)
+    else:
+        logger.info("Usando base de datos existente...")
+
+
+
     try:
         # 2. Cargar datos de BigQuery
         logger.info("Iniciando carga de datos desde BigQuery...")
@@ -165,9 +216,9 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
 
 # =============================
 # EXPERIMENTO 2
-# =============================
-meses_train_exp2 = [m for m in range(202001, 202103) if m != 202006]
-#meses_train_exp2 = [202001]
+# =============================#
+#meses_train_exp2 = [m for m in range(202001, 202103) if m != 202006]
+meses_train_exp2 = [202001]
 
 ejecutar_experimento(
     "EXP_NO_ESTACIONAL_ZLGBM_IPC",
