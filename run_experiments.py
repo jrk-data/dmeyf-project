@@ -270,6 +270,7 @@ def ejecutar_solo_final(nombre_experimento,
 # Queremos entrenar con 202001–202106 y predecir 202108
 meses_train_final = list(range(202001, 202107))  # 202001..202106
 
+
 df = select_data_lags_deltas('c02_delta',config.COLUMNAS_EXCLUIR,meses_train_final,2)
 
 ejecutar_solo_final(
@@ -278,3 +279,4 @@ ejecutar_solo_final(
     meses_train=meses_train_final,
     mes_final=202108
 )
+
