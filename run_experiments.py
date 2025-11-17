@@ -9,6 +9,7 @@ from src.loader import (select_data_c02, select_c02_polars, create_bq_table_c02,
 from src.features import (get_numeric_columns_pl, create_ipc_adjusted_table, creation_lags, creation_deltas)
 from src.preprocessing import create_binary_target_column
 from src.zlgbm import generar_rango_meses
+import src.zlgbm as zlgbm
 
 # Configurar logging
 logging.basicConfig(
