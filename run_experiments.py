@@ -8,6 +8,8 @@ import src.config as config
 from src.loader import (select_data_c02, select_c02_polars, create_bq_table_c02, create_targets_c02,tabla_productos_por_cliente)
 from src.features import (get_numeric_columns_pl, create_ipc_adjusted_table, creation_lags, creation_deltas)
 from src.preprocessing import create_binary_target_column
+from src.zlgbm import generar_rango_meses
+
 # Configurar logging
 logging.basicConfig(
     level=logging.INFO,
@@ -195,6 +197,39 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
         logging.error(f"Error durante la ejecución del experimento: {str(e)}", exc_info=True)
         raise
 
+def ejecutar_solo_final(nombre_experimento,
+                        df,
+                        meses_train,
+                        mes_final):
+    """
+    Ejecuta SOLO la etapa final:
+       - preprocess
+       - train final
+       - predict final
+       - submissions final
+    """
+    logger.info("=" * 80)
+    logger.info(f"🎯 Iniciando SOLO FINAL: {nombre_experimento}")
+    logger.info("=" * 80)
+
+    try:
+        pred_final, df_resultados, exp_path = zlgbm.main_solo_final(
+            nombre_experimento=nombre_experimento,
+            df=df,
+            meses_train=meses_train,
+            mes_final=mes_final,
+        )
+
+        logger.info(f"✔ SOLO FINAL '{nombre_experimento}' COMPLETADO")
+        logger.info(f"📁 Ruta del experimento: {exp_path}")
+
+        return pred_final, df_resultados, exp_path
+
+    except Exception as e:
+        logger.error("❌ Error durante SOLO FINAL")
+        logger.exception(e)
+        raise
+
 
 # =============================
 # EXPERIMENTO 1
@@ -213,17 +248,33 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
 #     mes_final=202108
 # )
 
-
 # =============================
 # EXPERIMENTO 2
-# =============================#
-#meses_train_exp2 = [m for m in range(202001, 202103) if m != 202006]
-meses_train_exp2 = [202001]
+# # =============================#
+# meses_train_exp2 = [m for m in generar_rango_meses(201901, 202103) if m != 202006]
+#
+# #meses_train_exp2 = [202001]
+#
+# ejecutar_experimento(
+#     "EXP_NO_ESTACIONAL_ZLGBM_IPC",
+#     meses_train_exp2,
+#     mes_test1=202104,
+#     mes_test2=202106,
+#     mes_final=202108
+#)
 
-ejecutar_experimento(
-    "EXP_NO_ESTACIONAL_ZLGBM_IPC",
-    meses_train_exp2,
-    mes_test1=202104,
-    mes_test2=202106,
+# ================================================================
+# 3. SOLO FINAL: ENTRENAR CON MÁS MESES Y PREDECIR 202108
+# ================================================================
+
+# Queremos entrenar con 202001–202106 y predecir 202108
+meses_train_final = list(range(202001, 202107))  # 202001..202106
+
+df = select_data_lags_deltas('c02_delta',config.COLUMNAS_EXCLUIR,meses_train_final,2)
+
+ejecutar_solo_final(
+    nombre_experimento="SOLO_FINAL_202001_202106",
+    df=df,
+    meses_train=meses_train_final,
     mes_final=202108
 )

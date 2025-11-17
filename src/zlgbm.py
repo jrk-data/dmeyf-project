@@ -1169,5 +1169,183 @@ def main(nombre_experimento=None,df=None, meses_train=None, mes_test1=None, mes_
     return predicciones, df_testing, df_resultados, pred_test1, pred_test2, exp_path
 
 
+def main_solo_final(nombre_experimento,
+                    df=None,
+                    meses_train=None,
+                    mes_final=None):
+    """
+    Modo 'solo final':
+      - Carga y preprocesa el df igual que main()
+      - Usa meses_train solo para armar df_train
+      - NO hace etapa de testing
+      - Entrena y predice solo el mes final (ej. 202108)
+      - Genera submissions para ese mes
+
+    Returns:
+        predicciones, df_resultados, exp_path
+    """
+    print("="*80)
+    print("R_to_py: SOLO ETAPA FINAL (sin testing)")
+    print("="*80)
+
+    inicio_ejecucion = datetime.now()
+
+    logger.info(f"Inicio: {inicio_ejecucion.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Experimento SOLO FINAL: {nombre_experimento}")
+    logger.info(f"Ganancia por acierto: ${GANANCIA_ACIERTO:,}")
+    logger.info(f"Costo por estímulo: ${COSTO_ESTIMULO:,}")
+    logger.info(f"Canaritos: {QCANARITOS}")
+    logger.info(f"Lags y Deltas: {FEATURE_ENGINEERING_LAGS} (órdenes: {LAGS_ORDEN if FEATURE_ENGINEERING_LAGS else 'N/A'})")
+    logger.info(f"Undersampling: {UNDERSAMPLING} (ratio={UNDERSAMPLING_RATIO})")
+    print()
+
+    # ========================================================================
+    # CREAR DIRECTORIO CON TIMESTAMP Y GUARDAR CONFIGURACIÓN
+    # ========================================================================
+    exp_path = crear_directorio_experimento(nombre_experimento)
+    config_path = guardar_configuracion(exp_path, nombre_experimento)
+    logger.info(f"Configuración guardada en: {config_path}\n")
+
+    # ========================================================================
+    # PASO 1: CARGA Y PREPROCESAMIENTO
+    # ========================================================================
+    logger.info("="*80)
+    logger.info("PASO 1: Carga y preprocesamiento")
+    logger.info("="*80)
+
+    if df is None:
+        logger.info(f"Cargando dataset desde {DATASET_PATH}...")
+        df = pd.read_csv(DATASET_PATH, compression='gzip')
+        logger.info(f"Dataset cargado: {df.shape}")
+    else:
+        logger.info("Usando DataFrame provisto externamente (BigQuery / runner).")
+        logger.info(f"Shape df externo: {df.shape}")
+        df = df.to_pandas()
+        df = _coerce_object_cols(df)
+
+    # Calcular clase_ternaria solo si no existe
+    if "clase_ternaria" not in df.columns or df["clase_ternaria"].isna().all():
+        df = calcular_clase_ternaria(df)
+    else:
+        logger.info("Columna 'clase_ternaria' ya existe y contiene valores.")
+
+    # Agregar canaritos
+    df = agregar_canaritos(df, QCANARITOS)
+
+    # Agregar lags y deltas (si estuvieran activados)
+    if FEATURE_ENGINEERING_LAGS:
+        df = agregar_lags_y_deltas(df, LAGS_ORDEN)
+
+    limpiar_memoria()
+    print()
+
+    # ========================================================================
+    # PASO 2: DEFINIR MESES Y ARMAR TRAIN / FINAL
+    # ========================================================================
+    logger.info("="*80)
+    logger.info("PASO 2: Preparación de datos (solo train + final)")
+    logger.info("="*80)
+
+    # TRAIN
+    if meses_train is None:
+        meses_train_efectivos = generar_rango_meses(
+            FOTO_MES_TRAIN_INICIO,
+            FOTO_MES_TRAIN_FIN
+        )
+        logger.info(
+            f"Train (por rango global): {FOTO_MES_TRAIN_INICIO} a {FOTO_MES_TRAIN_FIN} "
+            f"({len(meses_train_efectivos)} meses)"
+        )
+    else:
+        meses_train_efectivos = list(meses_train)
+        logger.info(
+            f"Train (meses explícitos): {meses_train_efectivos} "
+            f"({len(meses_train_efectivos)} meses)"
+        )
+
+    # FINAL
+    if mes_final is None:
+        mes_final_efectivo = FOTO_MES_FINAL
+    else:
+        mes_final_efectivo = mes_final
+
+    logger.info(f"Final: {mes_final_efectivo}")
+    print()
+
+    # Filtrar datos a mano (no usamos los test1/test2)
+    df_train = df[df["foto_mes"].isin(meses_train_efectivos)].copy()
+    df_final = df[df["foto_mes"] == mes_final_efectivo].copy()
+
+    logger.info(f"Train: {len(df_train):,} registros ({len(meses_train_efectivos)} meses)")
+    logger.info(f"Final ({mes_final_efectivo}): {len(df_final):,} registros")
+
+    # Undersampling solo a train
+    if UNDERSAMPLING:
+        df_train = aplicar_undersampling(df_train)
+
+    # Definir columnas de features (igual que en preparar_datos_train_test_final)
+    cols_excluir = [
+        'numero_de_cliente',
+        'foto_mes',
+        'clase_ternaria',
+        'clase_binaria',
+        'clase_peso',
+        'clase_ternaria_binaria2',
+        'clase_binaria1',
+        'clase_binaria2',
+    ]
+    feature_cols = [col for col in df_train.columns if col not in cols_excluir]
+    logger.info(f"Features: {len(feature_cols)}")
+    logger.info(f"  {feature_cols[:20]}{' ...' if len(feature_cols) > 20 else ''}")
+
+    print()
+
+    # ========================================================================
+    # PASO 3: ETAPA FINAL (SOLO PREDICCIÓN)
+    # ========================================================================
+    predicciones = etapa_final(df_train, df_final, feature_cols, exp_path)
+    print()
+
+    # ========================================================================
+    # PASO 4: GENERACIÓN DE SUBMISSIONS (OPCIONAL)
+    # ========================================================================
+    logger.info("="*80)
+    logger.info("PASO 4: Generación de submissions (solo final)")
+    logger.info("="*80)
+
+    df_resultados = generar_submissions(
+        predicciones,
+        exp_path,
+        sufijo=f"_solo_final_{mes_final_efectivo}"
+    )
+    print()
+
+    # ========================================================================
+    # RESUMEN FINAL
+    # ========================================================================
+    fin_ejecucion = datetime.now()
+    duracion = fin_ejecucion - inicio_ejecucion
+
+    logger.info("="*80)
+    logger.info("RESUMEN SOLO FINAL")
+    logger.info("="*80)
+    logger.info(f"\n📁 Directorio: {exp_path}\n")
+    logger.info("📄 Configuración:")
+    logger.info(f"  ✓ configuracion.json (parámetros del experimento)")
+    logger.info("\n🎯 Final:")
+    logger.info(f"  ✓ predicciones_final_detallado_{mes_final_efectivo}.csv ({len(predicciones):,} registros)")
+    logger.info(f"  ✓ resultados_cortes_solo_final_{mes_final_efectivo}.csv")
+    logger.info(f"\n📤 Submissions:")
+    logger.info(f"  ✓ kaggle/ ({len(CORTES)} archivos CSV)")
+    logger.info("\n" + "="*80)
+    logger.info("SOLO FINAL COMPLETADO!")
+    logger.info("="*80)
+    logger.info(f"Inicio: {inicio_ejecucion.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Fin: {fin_ejecucion.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Duración: {duracion}")
+    logger.info("="*80)
+
+    return predicciones, df_resultados, exp_path
+
 if __name__ == "__main__":
     main()
