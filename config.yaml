@@ -153,10 +153,6 @@ competencia03:
 
 
 competencia01:
-  MONTH_TRAIN: [202102,202103]
-  MONTH_VALIDATION: [202103]
-  MONTH_TEST: [202104]
-  MONTH_PRED: [202106]
 
   TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
   ID_COL: "numero_de_cliente"
@@ -178,7 +174,7 @@ experiment:
 
   # Meses de entrenamiento (los que vas a correr en este job)
 #  MONTH_TRAIN: [201901, 201902,201903,201904,201906, 202001, 202002,202003,202004,202006, 202101, 202102, 202103, 202104]
-  MONTH_TRAIN: [  202101,202102  ]
+  MONTH_TRAIN: [  202101,202102,202104  ]
   MONTH_VALIDATION: [202104]
   MONTH_TEST: [202104]
   MONTH_PRED: [202106]
