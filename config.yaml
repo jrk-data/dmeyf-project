@@ -87,6 +87,7 @@ optimization:
   # --- Parámetros Fijos de LightGBM ---
   fixed_params:
     objective: binary
+    verbosity: -1
     metric: None
     boosting_type: gbdt
     max_bin: 31

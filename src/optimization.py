@@ -24,17 +24,17 @@ logger = getLogger(__name__)
 def lgb_gan_eval_individual(y_pred, data):
     """Métrica de evaluación individual (feval) para LightGBM. Retorna np.max(ganancia)."""
 
-    logger.info("Calculo ganancia INDIVIDUAL")
+    #logger.info("Calculo ganancia INDIVIDUAL")
     # Usado para el entrenamiento, pero su score no es el que usa Optuna
     weight = data.get_weight()
     ganancia = np.where(weight == 1.00002, GANANCIA_ACIERTO, 0) - np.where(weight < 1.00002, COSTO_ESTIMULO, 0)
-    logger.info(f"ganancia : {ganancia}")
+    #logger.info(f"ganancia : {ganancia}")
     ganancia = ganancia[np.argsort(y_pred)[::-1]]
-    logger.info(f"ganancia sorted : {ganancia}")
+    #logger.info(f"ganancia sorted : {ganancia}")
     ganancia_acumulada = np.cumsum(ganancia)
-    logger.info(f"ganancia acumulada : {ganancia_acumulada}")
-    logger.info(f"ganancia max acumulada : {np.max(ganancia_acumulada)}")
-    logger.info(f"cliente optimo : {np.argmax(ganancia_acumulada)}")
+    #logger.info(f"ganancia acumulada : {ganancia_acumulada}")
+    ##.info(f"ganancia max acumulada : {np.max(ganancia_acumulada)}")
+    #logger.info(f"cliente optimo : {np.argmax(ganancia_acumulada)}")
     return 'gan_eval', np.max(ganancia_acumulada) , True
 
 def lgb_gan_eval_ensamble(y_pred_ensamble: np.ndarray, val_data: lgb.Dataset) -> Tuple[float, int, float]:
