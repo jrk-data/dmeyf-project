@@ -305,10 +305,11 @@ def main():
 
                 study = run_study(
                     X_train=FULL_SPLIT['X_train_pl'].to_pandas(),
-                    y_train=FULL_SPLIT['y_train_binaria'],
-                    semillas=semillas_semillerio,  # PASAMOS LAS 100 SEMILLAS
+                    # CRUCIAL: Asegurar que y_train y w_train sean matrices (N, 1)
+                    y_train=FULL_SPLIT['y_train_binaria'].reshape(-1, 1),
+                    semillas=semillas_semillerio,
                     SEED=config.SEEDS[0],
-                    w_train=FULL_SPLIT['w_train'],
+                    w_train=FULL_SPLIT['w_train'].reshape(-1, 1),
                     matching_categorical_features=None,
                     storage_optuna=storage_optuna,
                     study_name_optuna=study_name,
