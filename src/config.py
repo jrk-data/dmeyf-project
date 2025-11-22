@@ -32,6 +32,8 @@ try:
     # DATA CRUDA
     DATA_PATH_C02 = _cfgGeneral.get("DATA_PATH_C02", "data/competencia_01.csv")
     DATA_PATH_C03 = _cfgGeneral.get("DATA_PATH_C03", "data/competencia_01.csv")
+    PATH_FEATURES_SELECTION =_cfgGeneral.get("PATH_FEATURES_SELECTION", "data/features_selection.txt")
+
     # ---- Semillas ----
     SEEDS = seeds.get("SEEDS")
     SEED = seeds.get("SEED")
@@ -124,6 +126,7 @@ def setup_environment(is_vm_environment):
     DATA_PATH_C03 = paths.get("DATA_PATH_C03", "data/competencia_01.csv")
     DB_MODELS_TRAIN_PATH = paths.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
     DATA_PATH_FEATURES = paths.get("DATA_PATH_FEATURES", "data/features_train_test.csv")
+    PATH_FEATURES_SELECTION = paths.get("PATH_FEATURES_SELECTION", "data/features_selection.csv")
 
 #  MONTH_TRAIN: [   201901,201902,201903,201904,201905,201906,201907,
 #                  201908,201909,201910,201911,201912,202001,202002,

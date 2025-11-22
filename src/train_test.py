@@ -31,7 +31,6 @@ def train_model(study, X_train, y_train, weights, k,
                 base_study_name: str,
                 mes,
                 save_root, seeds, logger):
-
     if isinstance(X_train, pl.DataFrame):
         X_train = X_train.to_pandas()
 
@@ -40,10 +39,25 @@ def train_model(study, X_train, y_train, weights, k,
 
     # Seleccionar top-k trials según 'value'
     df_trials = study.trials_dataframe()
+
+    # --- CORRECCIÓN AQUÍ ---
+    # El nombre de la columna generada por Optuna es 'user_attrs_' + nombre del atributo
+    # En optimization.py usaste "mean_best_iter"
+    col_best_iter = "user_attrs_mean_best_iter"
+
+    # Verificamos si existe, por si acaso se corrió con otra lógica antes
+    if col_best_iter not in df_trials.columns:
+        # Fallback por si en alguna versión vieja se llamó 'best_iter'
+        if "user_attrs_best_iter" in df_trials.columns:
+            col_best_iter = "user_attrs_best_iter"
+        else:
+            logger.error(f"No se encontró columna de iteraciones. Columnas disponibles: {df_trials.columns}")
+            raise KeyError("No se encontró 'user_attrs_mean_best_iter' ni 'user_attrs_best_iter'")
+
     topk_df = (
         df_trials.nlargest(k, "value")
         .reset_index(drop=True)
-        .loc[:, ["number", "value", "user_attrs_best_iter"]]
+        .loc[:, ["number", "value", col_best_iter]]  # Usamos la variable corregida
     )
 
     number_to_trial = {t.number: t for t in study.trials}
