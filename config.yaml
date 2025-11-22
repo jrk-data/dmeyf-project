@@ -92,7 +92,7 @@ optimization:
     boosting_type: gbdt
     max_bin: 31
     boost_from_average: TRUE
-    feature_pre_filter: TRUE
+    feature_pre_filter: FALSE
     force_row_wise: TRUE
     extra_trees: TRUE
     # AGREGAMOS EL MÁXIMO DE RONDAS

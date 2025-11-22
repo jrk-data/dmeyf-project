@@ -46,26 +46,26 @@ def lgb_gan_eval_ensamble(y_pred_ensamble: np.ndarray, val_data: lgb.Dataset) ->
     # 2. Asignar ganancia/costo por fila según su peso real (clase real)
     ganancia_individual = np.where(weight == 1.00002, GANANCIA_ACIERTO, 0) - \
                           np.where(weight < 1.00002, COSTO_ESTIMULO, 0)
-    logger.info(f"ganancia : {ganancia_individual}")
+    #logger.info(f"ganancia : {ganancia_individual}")
 
     # 3. Ordenar la ganancia individual según la probabilidad predicha (y_pred_ensamble)
     ganancia_sorted = ganancia_individual[np.argsort(y_pred_ensamble)[::-1]]
-    logger.info(f"ganancia sorted : {ganancia_sorted}")
+    #logger.info(f"ganancia sorted : {ganancia_sorted}")
 
     ganancia_acumulada = np.cumsum(ganancia_sorted)
-    logger.info(f"ganancia acumulada : {ganancia_acumulada}")
+    #logger.info(f"ganancia acumulada : {ganancia_acumulada}")
     ganancia_max = np.max(ganancia_acumulada)
     idx_max_gan = np.argmax(ganancia_acumulada)
-    logger.info(f"ganancia max acumulada : {ganancia_max}")
-    logger.info(f"cliente oprimo : {idx_max_gan}")
+    #logger.info(f"ganancia max acumulada : {ganancia_max}")
+    #logger.info(f"cliente oprimo : {idx_max_gan}")
 
     # Ventana de Meseta (500 antes, 500 después del pico)
     inicio = max(0, idx_max_gan - 500)
     fin = min(len(ganancia_acumulada), idx_max_gan + 500)
 
     ganancia_media_meseta = np.mean(ganancia_acumulada[inicio: fin])
-    logger.debug(
-        f"Media Meseta: {ganancia_media_meseta:.0f}, Cliente óptimo: {idx_max_gan}, Ganancia Máx: {ganancia_max:.0f}")
+    #logger.debug(
+        #f"Media Meseta: {ganancia_media_meseta:.0f}, Cliente óptimo: {idx_max_gan}, Ganancia Máx: {ganancia_max:.0f}")
     return ganancia_media_meseta, idx_max_gan, ganancia_max
 
 
@@ -163,7 +163,7 @@ def run_study(X_train: pd.DataFrame, y_train: pd.Series, semillas: List[int], SE
                 valid_names=['valid'],
                 feval=lgb_gan_eval_individual,  # Usa la métrica custom para el ES
                 callbacks=[
-                    early_stopping(first_metric_only=False, stopping_rounds=EARLY_STOPPING_ROUNDS, verbose=False),
+                    early_stopping(first_metric_only=False, stopping_rounds=EARLY_STOPPING_ROUNDS, verbose=True),
                     lgb.log_evaluation(period=100, show_stdv=False)
                 ]
             )
