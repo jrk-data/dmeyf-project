@@ -218,18 +218,22 @@ def main():
             else:
                 MES_PRED_LIST = [int(config.MES_PRED)]
 
-            # --- Lógica de filtrado compleja solicitada ---
-            logger.info("Cargando histórico extendido (2019-2021)...")
+            if config.CARGAR_HISTORIA_COMPLETA:
+                logger.info("🚀 MODO PRODUCCIÓN: Cargando histórico extendido desde 2019...")
+                # Generamos rango dinámico: Desde 201901 hasta el último mes necesario
+                all_months_needed = MES_TEST_LIST + MES_PRED_LIST
+                max_month = max(all_months_needed) if all_months_needed else 202106
 
-            # Generamos rango dinámico: Desde 201901 hasta el último mes necesario (incluyendo test/pred)
-            all_months_needed = MES_TEST_LIST + MES_PRED_LIST
-            max_month = max(all_months_needed) if all_months_needed else 202106
+                # Meses desde 201901 hasta max_month
+                meses_a_cargar = [m for m in range(201901, max_month + 1) if m % 100 in range(1, 13)]
+            else:
+                logger.info("🧪 MODO PRUEBA: Cargando estrictamente los meses configurados...")
+                # Solo carga lo que pusiste en el YAML (Train + Test + Pred)
+                meses_a_cargar = config.MES_TRAIN + MES_TEST_LIST + MES_PRED_LIST
 
-            # Meses desde 201901 hasta max_month
-            meses_a_cargar = [m for m in range(201901, max_month + 1) if m % 100 in range(1, 13)]
-
-            # Evitar duplicados y cargar
+                # Evitar duplicados y cargar
             meses_a_cargar = list(set(meses_a_cargar))
+            logger.info(f"Meses a cargar desde BigQuery: {meses_a_cargar}")
 
             data_full = select_data_lags_deltas(
                 config.BQ_TABLE_FEATURES_HISTORICAL,

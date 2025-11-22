@@ -5,6 +5,7 @@
 DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
 DATA_PATH_C03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
 
+CARGAR_HISTORIA_COMPLETA: False
 
 # BIG QUERY DATOS
 bigquery:
