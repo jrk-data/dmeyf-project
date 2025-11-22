@@ -99,9 +99,16 @@ def run_study(X_train: pd.DataFrame, y_train: pd.Series, semillas: List[int], SE
 
     logger.info(f"Train/Val Split. Train size: {len(X_train)}, Validation size: {len(X_val)}")
 
+    # Convertir Series/Arrays 1D a arrays de NumPy 2D (N, 1)
+
+    y_train_2d = y_train_binaria.to_numpy().reshape(-1, 1)
+    w_train_2d = w_train.to_numpy().reshape(-1, 1)
+    y_val_2d = y_val_binaria.to_numpy().reshape(-1, 1)
+    w_val_2d = w_val.to_numpy().reshape(-1, 1)
+
     # Creación de Datasets LightGBM
-    train_data = lgb.Dataset(X_train, label=y_train_binaria, weight=w_train)
-    val_data = lgb.Dataset(X_val, label=y_val_binaria, weight=w_val)
+    train_data = lgb.Dataset(X_train, label=y_train_2d.ravel(), weight=w_train_2d.ravel())
+    val_data = lgb.Dataset(X_val, label=y_val_2d.ravel(), weight=w_val_2d.ravel())
 
     # Esto es una aproximación al número de meses para escalar la ganancia
     num_meses_train = len(config.MES_TRAIN) - 1 if hasattr(config, 'MES_TRAIN') else 1
