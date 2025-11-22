@@ -31,6 +31,7 @@ def train_model(study, X_train, y_train, weights, k,
                 base_study_name: str,
                 mes,
                 save_root, seeds, logger):
+
     if isinstance(X_train, pl.DataFrame):
         X_train = X_train.to_pandas()
 
@@ -40,9 +41,7 @@ def train_model(study, X_train, y_train, weights, k,
     # Seleccionar top-k trials según 'value'
     df_trials = study.trials_dataframe()
 
-    # --- CORRECCIÓN AQUÍ ---
-    # El nombre de la columna generada por Optuna es 'user_attrs_' + nombre del atributo
-    # En optimization.py usaste "mean_best_iter"
+    # Identificar nombre de columna correcto en el DataFrame de Optuna
     col_best_iter = "user_attrs_mean_best_iter"
 
     # Verificamos si existe, por si acaso se corrió con otra lógica antes
@@ -57,7 +56,7 @@ def train_model(study, X_train, y_train, weights, k,
     topk_df = (
         df_trials.nlargest(k, "value")
         .reset_index(drop=True)
-        .loc[:, ["number", "value", col_best_iter]]  # Usamos la variable corregida
+        .loc[:, ["number", "value", col_best_iter]]
     )
 
     number_to_trial = {t.number: t for t in study.trials}
@@ -69,20 +68,16 @@ def train_model(study, X_train, y_train, weights, k,
     save_dir = Path(save_root) / str(base_study_name) / str(mes)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # Id lógico para tablas/resumenes
-    experimento_key = f"{base_study_name}_{mes}"
-
     # Seteo parámetros fijos
     final_params = {
         'objective': 'binary',
         'boosting_type': 'gbdt',
-    'feature_pre_filter' : False,
-    'metric': 'None',
+        'feature_pre_filter' : False,
+        'metric': 'None',
         'max_bin': 31,
-        'verbosity': -1,  # Para suprimir la salida
-        'n_jobs': -1      # Para usar todos los cores
+        'verbosity': -1,
+        'n_jobs': -1
     }
-
 
     # array para guardar resumen de modelos y guardar metadata
     resumen_rows= list()
@@ -92,8 +87,25 @@ def train_model(study, X_train, y_train, weights, k,
         trial_num = int(row["number"])
         trial_val = float(row["value"])
         trial_obj = number_to_trial[trial_num]
-        print(trial_val)
-        num_boost_round = int(trial_obj.user_attrs.get("best_iter"))
+        print(f"Trial Value: {trial_val}")
+
+        # --- INICIO CORRECCIÓN -----------------------------------------
+        # 1. Intentar obtener 'mean_best_iter' (lógica semillerío)
+        raw_best_iter = trial_obj.user_attrs.get("mean_best_iter")
+
+        # 2. Fallback: intentar obtener 'best_iter' (lógica antigua)
+        if raw_best_iter is None:
+            raw_best_iter = trial_obj.user_attrs.get("best_iter")
+
+        # 3. Validación para evitar TypeError: int() argument must be...
+        if raw_best_iter is None:
+            logger.error(f"El trial {trial_num} no tiene 'mean_best_iter' ni 'best_iter' en user_attrs.")
+            logger.error(f"Keys disponibles: {list(trial_obj.user_attrs.keys())}")
+            raise ValueError(f"No se pudo determinar num_boost_round para el trial {trial_num}")
+
+        num_boost_round = int(raw_best_iter)
+        # --- FIN CORRECCIÓN --------------------------------------------
+
         params = final_params.copy()
         # Obtengo los parámetros del trial
         params.update(trial_obj.params)
@@ -103,14 +115,13 @@ def train_model(study, X_train, y_train, weights, k,
                 file = f"lgb_top{top_rank + 1}_seed_{int(seed)}.txt"
                 check_path = save_dir / file
 
-                logger.info(f"Entrenando modelo {file}")
+                logger.info(f"Entrenando modelo {file} (Rounds: {num_boost_round})")
 
                 if Path(check_path).exists():
                     logger.warning(f'Archivo {file} ya existe en directorio')
                     pass
                 else:
-
-                    # Agrgo semilla a params
+                    # Agrego semilla a params
                     params.update({'seed': seed})
 
                     # entrenamiento del modelo
@@ -122,9 +133,6 @@ def train_model(study, X_train, y_train, weights, k,
 
                     # Guardado
                     out_path = save_dir / file
-                    # si no existe, lo creo
-                    #out_path.mkdir(parents=True, exist_ok=True)
-
                     model.save_model(str(out_path))
 
                     resumen_rows.append({
@@ -140,10 +148,9 @@ def train_model(study, X_train, y_train, weights, k,
             except Exception as e:
                 logger.error(f"Error al entrenar modelo: {e}")
 
-
     logger.info(f"Modelos entrenados y guardados en {save_dir}")
     meta = pd.DataFrame(resumen_rows)
-    TABLE_NAME = f"{base_study_name}_train"   # antes: f"{experimento}_train"
+    TABLE_NAME = f"{base_study_name}_train"
 
     try:
         with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
