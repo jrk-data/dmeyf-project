@@ -2,7 +2,7 @@
 #STORAGE_OPTUNA: "sqlite:///optimizations/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
 
 # General
-DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
+DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
 DATA_PATH_C03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
 
 
@@ -168,17 +168,17 @@ competencia01:
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
   NUEVA_BASE: false
-  START_POINT: "DATA"        # o "PREDICT" según etapa
+  START_POINT: "PREDICT"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: true       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 5
 
 experiment:
-  STUDY_NAME_OPTUNA: "exp_zlgbm_estacional"
+  STUDY_NAME_OPTUNA: "test_c03_202104"
 
   # Meses de entrenamiento (los que vas a correr en este job)
 #  MONTH_TRAIN: [201901, 201902,201903,201904,201906, 202001, 202002,202003,202004,202006, 202101, 202102, 202103, 202104]
-  MONTH_TRAIN: [  202102  ]
+  MONTH_TRAIN: [  202101,202102  ]
   MONTH_VALIDATION: [202104]
   MONTH_TEST: [202104]
   MONTH_PRED: [202106]
