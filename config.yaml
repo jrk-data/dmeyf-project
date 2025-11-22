@@ -98,15 +98,15 @@ optimization:
     num_boost_round: 1000 # <-- Máximo de iteraciones para que el ES lo detenga
 
 preprocessing:
-  SUB_SAMPLE: 0.4
+  SUB_SAMPLE: 0.05
   NUN_WINDOW_LOAD: 2
   NUN_WINDOW: 2
   #COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
   #                   'mprestamos_personales','cprestamos_personales']
 #  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales','Master_Finiciomora',
 #'Master_Fvencimiento','Visa_Finiciomora']
-  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales']
-
+  #COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales']
+  COLUMNAS_EXCLUIR: []
   PSI_2021_FEATURES: ['Master_Fvencimiento',
 'Master_fultimo_cierre',
 'Master_mfinanciacion_limite',
@@ -174,7 +174,7 @@ flags:
   TOP_K_MODEL: 5
 
 experiment:
-  STUDY_NAME_OPTUNA: "test_c03_202104"
+  STUDY_NAME_OPTUNA: "test_c03_202104_CONSOLIDADO"
 
   # Meses de entrenamiento (los que vas a correr en este job)
 #  MONTH_TRAIN: [201901, 201902,201903,201904,201906, 202001, 202002,202003,202004,202006, 202101, 202102, 202103, 202104]
@@ -183,63 +183,12 @@ experiment:
   MONTH_TEST: [202104]
   MONTH_PRED: [202106]
   MESES_JUNTOS: True
-  # Mapping test por mes de train (clave: mes_train, valor: mes_test)
-  TEST_BY_TRAIN:
-    201901: 201906
-    201902: 201906
-    201903: 201906
-    201904: 201906
-
-    202001: 202006
-    202002: 202006
-    202003: 201906
-    202004: 201906
-    # para 202101/202102 no se calculan curvas (solo se usan para entrenar y predecir),
-    # podés omitirlos o dejarlos en blanco si querés:
-    # "202101": null
-    # "202102": null
 
   # Mes(es) a predecir para cada escenario de negocio
   PREDICT_SCENARIOS:
-    - name: "junio_2021_estacionalidad"
+    - name: "consolidado_prediccion_junio"
       pred_month: 202106
-      # entreno 202101 con todos los modelos 'enero' (201901, 202001)
+        # Ahora, train_for_pred debe apuntar al ÚNICO experimento consolidado
       train_for_pred:
-        - train_month: 202101
-          use_experiments_from: [201901, 202001]
-        - train_month: 202102
-          use_experiments_from: [201902, 202002]
-        - train_month: 202103
-          use_experiments_from: [201903, 202003]
-        - train_month: 202104
-          use_experiments_from: [201904, 202004]
-
-experiment_abril_estacionalidad:
-  STUDY_NAME_OPTUNA: "experimento_estacional_abril_01"
-
-  # Meses de entrenamiento (los que vas a correr en este job)
-  MONTH_TRAIN: [201901, 201902, 202001, 202002, 202101, 202102]
-
-  # Mapping test por mes de train (clave: mes_train, valor: mes_test)
-  TEST_BY_TRAIN:
-    201901: 201904
-    201902: 201904
-    202001: 202004
-    202002: 202004
-    # para 202101/202102 no se calculan curvas (solo se usan para entrenar y predecir),
-    # podés omitirlos o dejarlos en blanco si querés:
-    # "202101": null
-    # "202102": null
-
-  # Mes(es) a predecir para cada escenario de negocio
-  PREDICT_SCENARIOS:
-    - name: "abril_2021_estacionalidad"
-      pred_month: 202104
-      # entreno 202101 con todos los modelos 'enero' (201901, 202001)
-      train_for_pred:
-        - train_month: 202101
-          use_experiments_from: [201901, 202001]
-        - train_month: 202102
-          use_experiments_from: [201902, 202002]
-
-# Opcional: si querés otro escenario (junio 2021) agregás otro item acá
+        - train_month: "CONSOLIDATED" # Indicador de que el modelo viene del split total
+          use_experiments_from: [ "CONSOLIDATED" ] # Apuntar al nombre del estudio consolidado

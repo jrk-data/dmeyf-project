@@ -41,7 +41,6 @@ try:
     STUDY_NAME = exp.get("STUDY_NAME", "default_study")
     STUDY_NAME_OPTUNA = exp.get("STUDY_NAME_OPTUNA",None)
 
-    TEST_BY_TRAIN = exp.get("TEST_BY_TRAIN", {})  # dict[str->int]
     PREDICT_SCENARIOS = exp.get("PREDICT_SCENARIOS", [])  # list[dict]
 
     MESES_JUNTOS = exp.get("MESES_JUNTOS", False)
