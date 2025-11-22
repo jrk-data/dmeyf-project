@@ -263,16 +263,15 @@ def main():
             EXPERIMENT_NAME = config.STUDY_NAME_OPTUNA
 
             # 1. Cargar todos los meses necesarios para el split
-            meses_a_cargar = [int(m) for m in MES_TRAIN_LIST] + MES_TEST_LIST + MES_PRED_LIST
+            meses_a_cargar = MES_TRAIN_LIST + MES_TEST_LIST + MES_PRED_LIST
+            meses_a_cargar = list(set(meses_a_cargar))  # Eliminamos duplicados
 
             table_delta_features_historical = config.BQ_TABLE_FEATURES_HISTORICAL
 
             logger.info(f"Cargando {len(meses_a_cargar)} meses para el split consolidado...")
             data = select_data_lags_deltas(
                 table_delta_features_historical,
-                config.MES_TEST,
-                config.MES_PRED,
-                meses_a_cargar,
+                meses_a_cargar,  # <--- Pasa la lista consolidada
                 k=config.NUN_WINDOW
             )
             logger.info(f"Data shape cargada: {data.shape}")
@@ -384,9 +383,9 @@ def main():
                         ganancia_max_promedio = mejores_cortes_normalizado.get('PROMEDIO', {}).get('ganancia', 'N/A')
                         logger.info(f"[{study_name}] Ganancia Máxima del Ensamblaje en Test: {ganancia_max_promedio}")
 
-                # ---------------------------------------------------------------------------------
-                # 5. PREDICCIÓN FINAL / ENSEMBLE
-                # ---------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------
+        # 5. PREDICCIÓN FINAL / ENSEMBLE
+        # ---------------------------------------------------------------------------------
         if config.START_POINT == 'PREDICT':
             scenarios = getattr(config, "PREDICT_SCENARIOS", [])
 
@@ -407,7 +406,7 @@ def main():
 
                 X_pred = prepare_prediction_dataframe(
                     table_name=config.BQ_TABLE_FEATURES_HISTORICAL,
-                    mes_pred=pred_s,
+                    mes_pred=pred_s,  # <--- pred_s es un INT aquí (la función lo maneja)
                     k=config.NUN_WINDOW
                 )
 
@@ -436,10 +435,9 @@ def main():
                     # 1) Construir X_pred del mes objetivo
                     X_pred = prepare_prediction_dataframe(
                         table_name=config.BQ_TABLE_FEATURES_HISTORICAL,
-                        mes_pred=pred_s,
+                        mes_pred=pred_s,  # <--- pred_s es un INT aquí (la función lo maneja)
                         k=config.NUN_WINDOW
                     )
-
                     # 2) Armar lista de experimentos (carpetas + nombre de experimento)
                     exp_list = []
                     for g in groups:

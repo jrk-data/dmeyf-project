@@ -479,25 +479,22 @@ def create_momentums_deltas():
         logger.error(f"Error en la consulta a BigQuery: {e}")
         pass
 
-def select_data_lags_deltas(tabla, mes_train_lista: list, mes_test_lista,mes_pred_lista, k):
-    'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
 
-    logger.info(f"mes_test: {mes_test_lista}")
-    logger.info(f"mes_pred: {mes_pred_lista}")
-    meses = mes_train_lista + mes_test_lista + mes_pred_lista
-    logger.info(f"meses: {meses}")
+def select_data_lags_deltas(tabla, meses_a_cargar: list, k: int):
+    # 'meses_a_cargar' debe ser una lista de enteros únicos
+
+    logger.info(f"Meses cargados para features: {meses_a_cargar}")
 
     schema_table = _select_table_schema(config.BQ_PROJECT, config.BQ_DATASET, tabla)
-
     columns = _filter_lags_deltas(schema_table, k)
-
     client = bigquery.Client(project=config.BQ_PROJECT)
     bqstorage_client = bigquery_storage.BigQueryReadClient()
 
-    meses =  ", ".join(str(int(m)) for m in meses)
+    # Aseguramos que la lista sea de strings para el UNNEST
+    meses_str = ", ".join(str(int(m)) for m in meses_a_cargar)
 
     query = f"""SELECT {', '.join(columns)} FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{tabla}`
-    where foto_mes in UNNEST ([{meses}])"""
+    where foto_mes in UNNEST ([{meses_str}])"""
 
     job = client.query(query)
 

@@ -31,12 +31,11 @@ def prepare_prediction_dataframe(
 
     logger.info(f"[PREDICT] Preparando dataset de predicción para mes {mes_pred}...")
 
+    meses_a_cargar = [mes_pred]
     # --- 1) Obtener datos usando tu función original (ya calcula lags/deltas) ---
     df_polars = select_data_lags_deltas(
         table_name,
-        mes_pred,  # mes_train dummy
-        [mes_pred],  # mes_test  dummy
-        [mes_pred],  # mes_pred real
+        meses_a_cargar,  # <--- Pasamos la lista única
         k=k
     )
 
