@@ -32,7 +32,7 @@ try:
     # DATA CRUDA
     DATA_PATH_C02 = _cfgGeneral.get("DATA_PATH_C02", "data/competencia_01.csv")
     DATA_PATH_C03 = _cfgGeneral.get("DATA_PATH_C03", "data/competencia_01.csv")
-    PATH_FEATURES_SELECTION =_cfgGeneral.get("PATH_FEATURES_SELECTION", "data/features_selection.txt")
+    PATH_FEATURES_SELECTION = _cfgGeneral.get("PATH_FEATURES_SELECTION", "data/features_selection.txt")
     CARGAR_HISTORIA_COMPLETA = _cfgGeneral.get("CARGAR_HISTORIA_COMPLETA", False)
     # ---- Semillas ----
     SEEDS = seeds.get("SEEDS")
@@ -110,7 +110,7 @@ def setup_environment(is_vm_environment):
     Función que recibe un booleano y ejecuta el IF/ELSE
     correspondiente.
     """
-    global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH
+    global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH, PATH_FEATURES_SELECTION
 
     if is_vm_environment:
         paths = _cfgGeneral["vm"]
