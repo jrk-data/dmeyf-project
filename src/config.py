@@ -21,7 +21,7 @@ try:
     with open(PATH_CONFIG, "r", encoding="utf-8") as f:
         _cfgGeneral = yaml.safe_load(f)
         _cfg = _cfgGeneral["competencia01"]
-        _cfg2 = _cfgGeneral["competencia02"]
+        _cfg3 = _cfgGeneral["competencia03"]
         exp = _cfgGeneral["experiment"]
         bq = _cfgGeneral["bigquery"]
         opt = _cfgGeneral["optimization"]
@@ -29,6 +29,9 @@ try:
         pr = _cfgGeneral["preprocessing"]
         seeds = _cfgGeneral["seeds"]
 
+    # DATA CRUDA
+    DATA_PATH_C02 = _cfgGeneral.get("DATA_PATH_C02", "data/competencia_01.csv")
+    DATA_PATH_C03 = _cfgGeneral.get("DATA_PATH_C03", "data/competencia_01.csv")
     # ---- Semillas ----
     SEEDS = seeds.get("SEEDS")
     SEED = seeds.get("SEED")
@@ -41,17 +44,22 @@ try:
     TEST_BY_TRAIN = exp.get("TEST_BY_TRAIN", {})  # dict[str->int]
     PREDICT_SCENARIOS = exp.get("PREDICT_SCENARIOS", [])  # list[dict]
 
+    MESES_JUNTOS = exp.get("MESES_JUNTOS", False)
+
     # ---- Optimization ----
     N_TRIALS = int(opt.get("N_TRIALS", 50))
     N_STARTUP_TRIALS = int(opt.get("N_STARTUP_TRIALS", 20))
     NFOLD = int(opt.get("NFOLD", 5))
     EARLY_STOPPING_ROUNDS = int(opt.get("EARLY_STOPPING_ROUNDS", 0))  # 0 = no usar
     N_BOOSTS = 1000
+    FIXED_PARAMS_REF = opt.get("fixed_params", {})
+    SEARCHABLE_PARAMS_REF = opt.get("searchable_params", {})
+
     # --- Preprocessing ----
     PSI_2021_FEATURES = pr.get("PSI_2021_FEATURES", None)
     SUB_SAMPLE = pr.get("SUB_SAMPLE", None) # si es None, no se hace sub-sampling
     NUN_WINDOW_LOAD = pr.get("NUN_WINDOW_LOAD", 5)
-    NUN_WINDOW =  pr.get("NUN_WINDOW", 3)
+    NUN_WINDOW =  pr.get("NUN_WINDOW", 2)
 
     # --- Flags ----
     # Busca la variable optimizar, por defecto queda en False
@@ -70,20 +78,23 @@ try:
     MES_VALIDACION = exp.get("MONTH_VALIDATION", [202103])
     MES_TEST = exp.get("MONTH_TEST", [202104])
     MES_PRED = exp.get("MONTH_PRED", [202106])
-    TARGET = _cfg2.get("TARGET", "target")
-    ID_COL = _cfg2.get("ID_COL", "id")
+    TARGET = _cfg3.get("TARGET", "target")
+    ID_COL = _cfg3.get("ID_COL", "id")
 
-    MONTHS_DROP_LOAD = _cfg2.get("MONTHS_DROP_LOAD", [202006])
+    MONTHS_DROP_LOAD = _cfg3.get("MONTHS_DROP_LOAD", [202006])
 
     GANANCIA_ACIERTO = _cfg.get("GANANCIA_ACIERTO", None)
     COSTO_ESTIMULO = _cfg.get("COSTO_ESTIMULO", None)
 
 
-    # Competencia 02
-    BQ_PROJECT = _cfg2.get("BQ_PROJECT", None)
-    BQ_DATASET = _cfg2.get("BQ_DATASET", None)
-    BQ_TABLE = _cfg2.get("BQ_TABLE", None)
-    BQ_TABLE_TARGETS = _cfg2.get("BQ_TABLE_TARGETS", None)
+    # Competencia 03
+    BQ_PROJECT = _cfg3.get("BQ_PROJECT", None)
+    BQ_DATASET = _cfg3.get("BQ_DATASET", None)
+    BQ_TABLE = _cfg3.get("BQ_TABLE", None)
+    BQ_TABLE_TARGETS = _cfg3.get("BQ_TABLE_TARGETS", None)
+    BQ_TABLE_PRODUCTS = bq.get("BQ_TABLE_PRODUCTS", None)
+    BQ_TABLE_FEATURES = _cfg3.get("BQ_TABLE_FEATURES", None)
+    BQ_TABLE_FEATURES_HISTORICAL = _cfg3.get("BQ_TABLE_FEATURES_HISTORICAL", None)
 
     COLUMNAS_EXCLUIR = pr.get("COLUMNAS_EXCLUIR", [])
 
@@ -110,9 +121,10 @@ def setup_environment(is_vm_environment):
     OUTPUT_PATH = paths.get("OUTPUT_PATH", "output/")
     STORAGE_OPTUNA = paths.get("STORAGE_OPTUNA", None)
     DIR_MODELS = paths.get("DIR_MODELS", "src/models/default/")
-    DATA_PATH = paths.get("DATA_PATH", "data/competencia_01.csv")
+    DATA_PATH_C02 = paths.get("DATA_PATH_C02", "data/competencia_01.csv")
+    DATA_PATH_C03 = paths.get("DATA_PATH_C03", "data/competencia_01.csv")
     DB_MODELS_TRAIN_PATH = paths.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
-
+    DATA_PATH_FEATURES = paths.get("DATA_PATH_FEATURES", "data/features_train_test.csv")
 
 #  MONTH_TRAIN: [   201901,201902,201903,201904,201905,201906,201907,
 #                  201908,201909,201910,201911,201912,202001,202002,

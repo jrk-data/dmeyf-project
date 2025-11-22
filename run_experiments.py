@@ -10,7 +10,7 @@ from src.features import (get_numeric_columns_pl, create_ipc_adjusted_table, cre
 from src.preprocessing import create_binary_target_column
 from src.zlgbm import generar_rango_meses
 import src.zlgbm as zlgbm
-
+from src.comparacion_datos_gustavo import join_features_and_targets
 # Configurar logging
 logging.basicConfig(
     level=logging.INFO,
@@ -93,7 +93,7 @@ def select_data_lags_deltas(tabla, columnas_excluir,meses, k):
 # =============================
 # Función de ejecución general
 # =============================
-def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
+def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final, targets):
     logger.info(f"\n{'=' * 50}")
     logger.info(f"Iniciando experimento: {nombre}")
     logger.info(f"{'=' * 50}")
@@ -125,7 +125,7 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
         create_bq_table_c02(data, config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE)
 
         # Creo targets
-        create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS)
+        create_targets_c02(config.BQ_PROJECT, config.BQ_DATASET, config.BQ_TABLE, config.BQ_TABLE_TARGETS, targets)
 
         # Creo q_productos_cliente_mes
         # Acá filtro los meses que no van a entrar
@@ -140,33 +140,37 @@ def ejecutar_experimento(nombre, meses_train, mes_test1, mes_test2, mes_final):
         numeric_cols = get_numeric_columns_pl(data, exclude_cols=exclude_cols)
 
         # Creo tabla c02_ipc
-        logger.info("Creando tabla c02_ipc...")
-        create_ipc_adjusted_table()
+        #logger.info("Creando tabla c02_ipc...")
+        #create_ipc_adjusted_table()
 
+        tabla_features = config.BQ_TABLA_FEATURES
         # Creo tabla con lags
         logger.info(f"Creando lags n= {config.NUN_WINDOW_LOAD}...")
-        creation_lags(numeric_cols, config.NUN_WINDOW_LOAD)
+        creation_lags(tabla_features,numeric_cols, config.NUN_WINDOW_LOAD)
 
         # Creo tabla con deltas
         logger.info("Creando deltas...")
         creation_deltas(numeric_cols, config.NUN_WINDOW_LOAD)
 
-        # Binarizando target
-        logger.info("Binarizando target...")
-        table_with_deltas = 'c02_delta'
-        create_binary_target_column(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas)
 
-    # Selecciono los datos de los meses que se van a trabajar
-    # data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas, meses)
     else:
         logger.info("Usando base de datos existente...")
 
+    if targets == 't1':
+        c02_delta = 'c02_delta'
+    elif targets == 't2':
+        c02_delta = 'c02_delta_targets_gustavo'
 
-
+    # Binarizando target
+    logger.info("Binarizando target...")
+    table_with_deltas = c02_delta
+    create_binary_target_column(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas)
+    # Selecciono los datos de los meses que se van a trabajar
+    # data = select_data_c02(config.BQ_PROJECT, config.BQ_DATASET, table_with_deltas, meses)
     try:
         # 2. Cargar datos de BigQuery
         logger.info("Iniciando carga de datos desde BigQuery...")
-        df = select_data_lags_deltas('c02_delta',config.COLUMNAS_EXCLUIR,meses_total,2)
+        df = select_data_lags_deltas(c02_delta,config.COLUMNAS_EXCLUIR,meses_total,2)
         logger.info(f"Datos cargados exitosamente. Shape: {df.shape}")
 
         # 3. Configurar workflow
@@ -235,19 +239,37 @@ def ejecutar_solo_final(nombre_experimento,
 # =============================
 # EXPERIMENTO 1
 # =============================
-# meses_train_exp1 = [
-#     201901,201902,201903,201904,
-#     202001,202002,202003,202004,
-#     202101,202102
-# ]
-#
-# ejecutar_experimento(
-#     "EXPERIMENTO_ESTACIONAL_ZLGBM",
-#     meses_train_exp1,
-#     mes_test1=202104,
-#     mes_test2=202106,
-#     mes_final=202108
-# )
+meses_train_exp1 = [
+    202012, 202101,202102
+]
+
+ejecutar_experimento(
+    "experimento-targets-propio",
+    meses_train_exp1,
+    mes_test1=202104,
+    mes_test2=202106,
+    mes_final=202106,
+    targets = 't1'
+)
+
+
+
+# =============================
+# EXPERIMENTO 2
+# # =============================#
+meses_train_exp1 = [
+    202012, 202101,202102
+]
+
+ejecutar_experimento(
+    "experimento-targets-gustavo",
+    meses_train_exp1,
+    mes_test1=202104,
+    mes_test2=202106,
+    mes_final=202106,
+    targets= 't2'
+)
+
 
 # =============================
 # EXPERIMENTO 2

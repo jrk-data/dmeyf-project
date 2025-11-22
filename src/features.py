@@ -43,8 +43,185 @@ def get_numeric_columns_pl(
     return numeric_cols
 
 
+def create_intra_month_features_bq(
+    project_id: str,
+    dataset_id: str,
+    source_table: str,
+    output_table: str
+) -> None:
+    """
+    Crea la tabla con Feature Engineering intra-mes en BigQuery.
+
+    Args:
+        project_id: ID del proyecto de Google Cloud.
+        dataset_id: ID del dataset.
+        source_table: Nombre de la tabla de entrada (cruda o con targets).
+        output_table: Nombre de la tabla de salida.
+    """
+
+    logger.info(f"Iniciando Feature Engineering intra-mes para '{output_table}'...")
+
+    try:
+        client = bigquery.Client(project=project_id)
+        source_ref = f"`{project_id}.{dataset_id}.{source_table}`"
+        output_ref = f"`{project_id}.{dataset_id}.{output_table}`"
+
+        query = f"""
+        CREATE OR REPLACE TABLE {output_ref}
+        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201901, 202208, 1))
+        CLUSTER BY foto_mes, numero_de_cliente
+        AS
+        SELECT
+            t1.* EXCEPT(clase_ternaria),
+            t1.clase_ternaria, -- Aseguramos que la columna clase_ternaria esté al final
+
+            -- kmes (Mes del año)
+            MOD(t1.foto_mes, 100) AS kmes,
+
+            -- ctrx_quarter_normalizado (Normalización de ctrx_quarter por antigüedad)
+            CASE
+                WHEN t1.cliente_antiguedad = 1 THEN t1.ctrx_quarter * 5.0
+                WHEN t1.cliente_antiguedad = 2 THEN t1.ctrx_quarter * 2.0
+                WHEN t1.cliente_antiguedad = 3 THEN t1.ctrx_quarter * 1.2
+                ELSE t1.ctrx_quarter -- Valor por defecto o ctrx_quarter original
+            END AS ctrx_quarter_normalizado,
+
+            -- mpayroll_sobre_edad
+            CASE
+                WHEN t1.cliente_edad IS NULL OR t1.cliente_edad = 0 THEN NULL
+                ELSE t1.mpayroll / t1.cliente_edad
+            END AS mpayroll_sobre_edad
+
+        FROM {source_ref} AS t1;
+        """
+
+        job = client.query(query)
+        job.result()
+        logger.info(f"✅ Feature Engineering intra-mes completado. Tabla guardada en '{output_table}'.")
+
+    except Exception as e:
+        logger.error(f"❌ Error al ejecutar el Feature Engineering intra-mes en BigQuery: {e}")
+        raise
 
 
+
+def create_historical_features_bq(
+    project_id: str,
+    dataset_id: str,
+    source_table: str,
+    output_table: str,
+    cols_to_engineer: list, # Lista de columnas para las que calcular historial
+    window_size: int = 6,
+) -> None:
+
+    logger.info(f"Iniciando Feature Engineering histórico ({window_size} meses) con CTEs para evitar anidación...")
+
+    try:
+        client = bigquery.Client(project=project_id)
+        source_ref = f"`{project_id}.{dataset_id}.{source_table}`"
+        output_ref = f"`{project_id}.{dataset_id}.{output_table}`"
+
+        # --- CONSTRUCCIÓN DINÁMICA DE EXPRESIONES (Sin la cláusula 'OVER') ---
+        lag_exprs = []
+        hist_exprs = []
+
+        # 1. Definición de la especificación de la ventana (para re-uso)
+        window_spec_name = "w"
+        window_spec_sql = f"""
+            WINDOW {window_spec_name} AS (
+                PARTITION BY numero_de_cliente
+                ORDER BY foto_mes
+                ROWS BETWEEN {window_size - 1} PRECEDING AND CURRENT ROW
+            )
+        """
+
+        # 2. Loop para generar todas las expresiones (usando alias 't2')
+        for col in cols_to_engineer:
+
+            # --- Variables limpias del CTE BaseFeatures (t2) ---
+            col_base = f"t2_{col}_clean"
+            col_rn = "t2_row_index"
+
+            # --- 1. Lags ---
+            col_lag1 = f"LAG({col_base}, 1) OVER (PARTITION BY t2.numero_de_cliente ORDER BY t2.foto_mes)"
+            col_lag2 = f"LAG({col_base}, 2) OVER (PARTITION BY t2.numero_de_cliente ORDER BY t2.foto_mes)"
+
+            lag_exprs.append(f"{col_lag1} AS {col}_lag1")
+            lag_exprs.append(f"{col_lag2} AS {col}_lag2")
+
+            # --- 2. Deltas (Resta) ---
+            lag_exprs.append(f"({col_base} - {col_lag1}) AS {col}_delta1")
+            lag_exprs.append(f"({col_base} - {col_lag2}) AS {col}_delta2")
+
+            # --- 3. Tendencia (COVAR_POP / VAR_POP) ---
+            # Aplicamos la ventana NOMBRADA ({window_spec_name}) a cada función de agregación
+            hist_exprs.append(f"""
+                (
+                    COVAR_POP({col_base}, {col_rn}) OVER {window_spec_name}
+                    /
+                    NULLIF(VAR_POP({col_rn}) OVER {window_spec_name}, 0)
+                ) AS {col}_tend{window_size}
+            """)
+
+            # --- 4. Promedio, Min, Max (AVG, MIN, MAX) ---
+            col_avg = f"AVG({col_base}) OVER {window_spec_name}"
+            col_min = f"MIN({col_base}) OVER {window_spec_name}"
+            col_max = f"MAX({col_base}) OVER {window_spec_name}"
+
+            hist_exprs.append(f"{col_avg} AS {col}_avg{window_size}")
+            # Corregir los nombres de alias de min/max (antes eran _avg{window_size} duplicados)
+            hist_exprs.append(f"{col_min} AS {col}_min{window_size}")
+            hist_exprs.append(f"{col_max} AS {col}_max{window_size}")
+
+            # --- 5. Ratios (División) ---
+            hist_exprs.append(f"({col_base} / NULLIF({col_avg}, 0)) AS {col}_ratioavg{window_size}")
+            hist_exprs.append(f"({col_base} / NULLIF({col_max}, 0)) AS {col}_ratiomax{window_size}")
+
+        all_new_features = lag_exprs + hist_exprs
+
+        # --- QUERY FINAL CON CTEs ---
+        # BaseFeatures: Limpieza de tipos y cálculo del índice (ROW_NUMBER)
+        # HistoricalFeatures: Cálculos de ventana (LAG, AVG, COVAR)
+
+        cols_for_base_cte = [f"CAST(t1.{col} AS FLOAT64) AS t2_{col}_clean" for col in cols_to_engineer]
+
+        query = f"""
+        CREATE OR REPLACE TABLE {output_ref}
+        PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY(201801, 203001, 1))
+        CLUSTER BY foto_mes, numero_de_cliente
+        AS
+        WITH BaseFeatures AS (
+            SELECT
+                -- 1. Seleccionamos TODAS las columnas originales (solo una vez)
+                t1.*,
+                -- 2. Calculamos el índice para la regresión (X)
+                ROW_NUMBER() OVER(PARTITION BY t1.numero_de_cliente ORDER BY t1.foto_mes) AS t2_row_index,
+                -- 3. Creamos las versiones limpias/casteadas de las features (Y)
+                {', '.join(cols_for_base_cte)}
+            FROM {source_ref} AS t1
+        ),
+        HistoricalFeatures AS (
+            SELECT
+                -- 1. Seleccionamos todas las columnas base y eliminamos las auxiliares
+                t2.* EXCEPT({', '.join([f"t2_{col}_clean" for col in cols_to_engineer])}, t2_row_index),
+
+                -- 2. Agregamos las features históricas calculadas
+                {', '.join(all_new_features)}
+            FROM BaseFeatures AS t2
+            {window_spec_sql}
+        )
+        SELECT * FROM HistoricalFeatures;
+        """
+        # DEBUG: Imprimir la query completa para revisión antes de ejecutar
+        # print(query)
+
+        job = client.query(query)
+        job.result()
+        logger.info(f"✅ Feature Engineering histórico completado. Tabla guardada en '{output_table}'.")
+
+    except Exception as e:
+        logger.error(f"❌ Error al ejecutar el Feature Engineering histórico en BigQuery: {e}")
+        raise
 
 
 def feature_engineering_lag(df: pl.DataFrame, columnas: List[str], cant_lag: int = 1) -> pl.DataFrame:
@@ -137,101 +314,10 @@ def feature_engineering_delta(
 
 
 
-def create_ipc_adjusted_table(
-    source_table: str = "c02_products",
-    target_table: str = "c02_ipc",
-    ipc_table: str = "ipc_mensual",
-    mes_ini: int = 201901,
-    mes_fin: int = 202208,
-) -> None:
-    """
-    Crea/actualiza una tabla en BigQuery con todos los campos de `source_table`,
-    pero ajustando por IPC todas las columnas de montos.
-
-    Ajuste: monto_ajustado = monto_original / (ipc/100) del mes correspondiente.
-
-    - Columnas de montos: las que empiezan con:
-        * 'm'       (ej: mcuentas_saldo, mcuenta_corriente)
-        * 'VISA_m'  (case-insensitive)
-        * 'MASTER_m' (case-insensitive)
-
-    - La tabla resultante se llama `target_table`, queda en el mismo dataset,
-      particionada por foto_mes y clusterizada por numero_de_cliente.
-    """
-    client = bigquery.Client(project=config.BQ_PROJECT)
-
-    dataset_id = config.BQ_DATASET
-    project_id = config.BQ_PROJECT
-
-    # Nombre simple de la tabla fuente (sin proyecto/dataset)
-    source_table_name = source_table.split(".")[-1]
-    ipc_table_name = ipc_table.split(".")[-1]
-
-    # 1) Obtener la lista de columnas de montos desde INFORMATION_SCHEMA
-    schema_query = f"""
-    SELECT column_name
-    FROM `{project_id}.{dataset_id}.INFORMATION_SCHEMA.COLUMNS`
-    WHERE table_name = @table_name
-      AND (
-        -- Si empieza con m y NO empieza con master
-        (LOWER(column_name) LIKE 'm%' AND LOWER(column_name) NOT LIKE 'master%')
-
-        -- O si empieza con visa_m
-        OR LOWER(column_name) LIKE 'visa_m%'
-
-        -- O si empieza con master_m (columnas válidas)
-        OR LOWER(column_name) LIKE 'master_m%'
-      )
-    ORDER BY ordinal_position
-    """
-
-    schema_job = client.query(
-        schema_query,
-        job_config=bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("table_name", "STRING", source_table_name)
-            ]
-        ),
-    )
-    monto_cols = [row["column_name"] for row in schema_job.result()]
-
-    if not monto_cols:
-        print(f"[create_ipc_adjusted_table] No se encontraron columnas de montos en {source_table_name}.")
-        return
-
-    print(f"[create_ipc_adjusted_table] Columnas de montos detectadas: {monto_cols}")
-
-    # 2) Armar lista de columnas a excluir del SELECT a.* EXCEPT(...)
-    except_list = ", ".join(f"`{col}`" for col in monto_cols)
-
-    # 3) Expresiones de columnas ajustadas
-    # monto_ajustado = monto / (ipc/100.0)
-    adjusted_exprs = ",\n      ".join(
-        f"SAFE_DIVIDE(a.{col}, (i.ipc/100.0)) AS {col}"
-        for col in monto_cols
-    )
-
-    # 4) Construir SQL final
-    sql = f"""
-    CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.{target_table}`
-    PARTITION BY RANGE_BUCKET(foto_mes, GENERATE_ARRAY({mes_ini}, {mes_fin}, 1))
-    CLUSTER BY numero_de_cliente AS
-    SELECT
-      a.* EXCEPT({except_list}),
-      {adjusted_exprs}
-    FROM `{project_id}.{dataset_id}.{source_table_name}` AS a
-    LEFT JOIN `{project_id}.{dataset_id}.{ipc_table_name}` AS i
-      USING (foto_mes);
-    """
-
-    print("[create_ipc_adjusted_table] Ejecutando SQL:\n", sql)
-
-    job = client.query(sql)
-    job.result()
 
 
 
-def creation_lags(columnas: List[str], cant_lag: int = 1):
+def creation_lags(table_source, columnas: List[str],  cant_lag: int = 1):
     """
     Crea/actualiza la tabla c02_lags con lags de 1..cant_lag para cada columna,
     particionada por foto_mes y clusterizada por numero_de_cliente.
@@ -262,7 +348,7 @@ def creation_lags(columnas: List[str], cant_lag: int = 1):
     SELECT
     a.*,
       {select_list}
-    FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.c02_ipc` AS a
+    FROM `{config.BQ_PROJECT}.{config.BQ_DATASET}.{table_source}` AS a
     """
 
     job_cfg = bigquery.QueryJobConfig(
@@ -312,9 +398,9 @@ def _filter_lags_deltas(cols, k):
     filtradas = []
     for c in cols:
         # Si es lag o delta hasta 5
-        if '_lag_' not in c and '_delta_' not in c:
+        if '_lag' not in c and '_delta' not in c:
             filtradas.append(c)
-        elif re.search(rf'_lag_[1-{k}]$', c) or re.search(rf'_delta_[1-{k}]$', c):
+        elif re.search(rf'_lag[1-{k}]$', c) or re.search(rf'_delta[1-{k}]$', c):
             filtradas.append(c)
     return filtradas
 
@@ -393,13 +479,12 @@ def create_momentums_deltas():
         logger.error(f"Error en la consulta a BigQuery: {e}")
         pass
 
-def select_data_lags_deltas(tabla, mes_train, mes_test_lista,mes_pred_lista, k):
+def select_data_lags_deltas(tabla, mes_train_lista: list, mes_test_lista,mes_pred_lista, k):
     'Selecciona los campos de lags y deltas para un k y todos los campos que no son lags o deltas'
-    mes_test =  mes_test_lista[0]
-    mes_pred = mes_pred_lista[0]
-    logger.info(f"mes_test: {mes_test}")
-    logger.info(f"mes_pred: {mes_pred}")
-    meses = [mes_train, mes_test, mes_pred]
+
+    logger.info(f"mes_test: {mes_test_lista}")
+    logger.info(f"mes_pred: {mes_pred_lista}")
+    meses = mes_train_lista + mes_test_lista + mes_pred_lista
     logger.info(f"meses: {meses}")
 
     schema_table = _select_table_schema(config.BQ_PROJECT, config.BQ_DATASET, tabla)

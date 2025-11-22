@@ -4,10 +4,10 @@ import numpy as np
 import optuna
 import lightgbm as lgb
 import polars as pl
+import pandas as pd
 from .config import (
-    STUDY_NAME,
     N_TRIALS, N_STARTUP_TRIALS,
-    NFOLD, EARLY_STOPPING_ROUNDS, MES_TRAIN, MES_TEST, SEEDS, GANANCIA_ACIERTO, COSTO_ESTIMULO
+     GANANCIA_ACIERTO, COSTO_ESTIMULO
 )
 from src.gain_functions import lgb_gan_eval
 from logging import getLogger
@@ -15,142 +15,165 @@ from lightgbm import early_stopping
 import src.config as config
 from src.create_seeds import create_seed
 from src.utils import _coerce_object_cols
-
+import gc
+from typing import List
 
 logger = getLogger(__name__)
 
 
 def lgb_gan_eval_individual(y_pred, data):
+    """Métrica de evaluación individual (feval) para LightGBM. Retorna np.max(ganancia)."""
+
     logger.info("Calculo ganancia INDIVIDUAL")
+    # Usado para el entrenamiento, pero su score no es el que usa Optuna
     weight = data.get_weight()
     ganancia = np.where(weight == 1.00002, GANANCIA_ACIERTO, 0) - np.where(weight < 1.00002, COSTO_ESTIMULO, 0)
     logger.info(f"ganancia : {ganancia}")
     ganancia = ganancia[np.argsort(y_pred)[::-1]]
     logger.info(f"ganancia sorted : {ganancia}")
-    ganancia = np.cumsum(ganancia)
-    logger.info(f"ganancia acumulada : {ganancia}")
-    #con polars
-    # df_eval = pl.DataFrame({"y_pred":y_pred , "weight":weight})
-    # df_sorted = df_eval.sort("y_pred" , descending=True)
-    # df_sorted = df_sorted.with_columns([pl.when(pl.col('weight') == 1.00002).then(GANANCIA).otherwise(-ESTIMULO).alias('ganancia_individual')])
-    # df_sorted = df_sorted.with_columns([pl.col('ganancia_individual').cum_sum().alias('ganancia_acumulada')])
-    # ganancia_maxima = df_sorted.select(pl.col('ganancia_acumulada').max()).item()
-    # id_gan_max = df_sorted["ganancia_acumulada"].arg_max()
-    # media_meseta = df_sorted.slice(id_gan_max-500, 1000)['ganancia_acumulada'].mean()
-    logger.info(f"ganancia max acumulada : {np.max(ganancia)}")
-    logger.info(f"cliente optimo : {np.argmax(ganancia)}")
-    return 'gan_eval', np.max(ganancia) , True
+    ganancia_acumulada = np.cumsum(ganancia)
+    logger.info(f"ganancia acumulada : {ganancia_acumulada}")
+    logger.info(f"ganancia max acumulada : {np.max(ganancia_acumulada)}")
+    logger.info(f"cliente optimo : {np.argmax(ganancia_acumulada)}")
+    return 'gan_eval', np.max(ganancia_acumulada) , True
 
-def lgb_gan_eval_ensamble(y_pred , data):
+def lgb_gan_eval_ensamble(y_pred_ensamble: np.ndarray, val_data: lgb.Dataset) -> Tuple[float, int, float]:
+    """Calcula la Ganancia Media en Meseta sobre las predicciones ensambladas."""
     logger.info("Calculo ganancia ENSAMBLE")
-    weight = data.get_weight()
-    ganancia =np.where(weight == 1.00002 , GANANCIA_ACIERTO, 0) - np.where(weight < 1.00002 , COSTO_ESTIMULO ,0)
-    logger.info(f"ganancia : {ganancia}")
-    ganancia_sorted = ganancia[np.argsort(y_pred)[::-1]]
+    # 1. Obtener los pesos del dataset de validación
+    weight = val_data.get_weight()
+
+    # 2. Asignar ganancia/costo por fila según su peso real (clase real)
+    ganancia_individual = np.where(weight == 1.00002, GANANCIA_ACIERTO, 0) - \
+                          np.where(weight < 1.00002, COSTO_ESTIMULO, 0)
+    logger.info(f"ganancia : {ganancia_individual}")
+
+    # 3. Ordenar la ganancia individual según la probabilidad predicha (y_pred_ensamble)
+    ganancia_sorted = ganancia_individual[np.argsort(y_pred_ensamble)[::-1]]
     logger.info(f"ganancia sorted : {ganancia_sorted}")
+
     ganancia_acumulada = np.cumsum(ganancia_sorted)
     logger.info(f"ganancia acumulada : {ganancia_acumulada}")
     ganancia_max = np.max(ganancia_acumulada)
     idx_max_gan = np.argmax(ganancia_acumulada)
     logger.info(f"ganancia max acumulada : {ganancia_max}")
     logger.info(f"cliente oprimo : {idx_max_gan}")
-    ganancia_media_meseta = np.mean(ganancia_acumulada[idx_max_gan-500 : idx_max_gan+500])
-    logger.info(f"ganancia media meseta : {ganancia_media_meseta}")
-    return ganancia_media_meseta ,idx_max_gan ,ganancia_max
+
+    # Ventana de Meseta (500 antes, 500 después del pico)
+    inicio = max(0, idx_max_gan - 500)
+    fin = min(len(ganancia_acumulada), idx_max_gan + 500)
+
+    ganancia_media_meseta = np.mean(ganancia_acumulada[inicio: fin])
+    logger.debug(
+        f"Media Meseta: {ganancia_media_meseta:.0f}, Cliente óptimo: {idx_max_gan}, Ganancia Máx: {ganancia_max:.0f}")
+    return ganancia_media_meseta, idx_max_gan, ganancia_max
 
 
-def run_study(X_train, y_train, semillas, SEED,w_train, matching_categorical_features: None
-              ,storage_optuna, study_name_optuna, optimizar = False):
-    """Crea/ejecuta el estudio Optuna (TPE bayesiano)."""
+def run_study(X_train: pd.DataFrame, y_train: pd.Series, semillas: List[int], SEED: int, w_train: pd.Series,
+              matching_categorical_features: None, storage_optuna: str, study_name_optuna: str,
+              optimizar: bool = False):
+    # 0. Obtener constantes del módulo config (Asumimos que están disponibles)
+    try:
+        MES_VALIDACION = config.MES_VALIDACION
+        EARLY_STOPPING_ROUNDS = config.EARLY_STOPPING_ROUNDS
+        NUM_BOOST_ROUND_MAX = config.FIXED_PARAMS_REF['num_boost_round']
+        N_TRIALS = config.N_TRIALS
+    except AttributeError:
+        logger.warning("Usando valores por defecto para MES_VALIDACION y EARLY_STOPPING_ROUNDS.")
+        # Usamos los valores de las dependencias asumidas si config no funciona
+        pass
 
-    logger.info(f"Comienzo optimizacion hiperp binario: {study_name_optuna}")
-    if isinstance(X_train, pl.DataFrame):
-        X_train = X_train.to_pandas()
-    if isinstance(y_train, pl.Series):
-        y_train_binaria = y_train.to_pandas()
-    if isinstance(w_train, pl.Series):
-        w_train = w_train.to_pandas()
+    # Aseguramos tipos de entrada
+    X_train = _coerce_object_cols(X_train)
 
-    logger.info("Se cargaron X_train, y_train_binaria y w_train")
-    num_meses = len(MES_TRAIN)
-    f_val = X_train["foto_mes"] == config.MES_VALIDACION
+    # 1. Separación Train/Validation Fija
+    f_val = X_train["foto_mes"] == MES_VALIDACION
 
-    X_val = X_train.loc[f_val]
-    y_val_binaria = y_train_binaria[X_val.index]
+    X_val = X_train.loc[f_val].drop(columns=["foto_mes"])
+    y_val_binaria = y_train[X_val.index]
     w_val = w_train[X_val.index]
 
-    X_train = X_train.loc[~f_val]
-    y_train_binaria = y_train_binaria[X_train.index]
+    X_train = X_train.loc[~f_val].drop(columns=["foto_mes"])
+    y_train_binaria = y_train[X_train.index]
     w_train = w_train[X_train.index]
 
-    logger.info(f"Meses train en bayesiana : {X_train['foto_mes'].unique()}")
-    logger.info(f"Meses validacion en bayesiana : {X_val['foto_mes'].unique()}")
+    logger.info(f"Train/Val Split. Train size: {len(X_train)}, Validation size: {len(X_val)}")
 
+    # Creación de Datasets LightGBM
+    train_data = lgb.Dataset(X_train, label=y_train_binaria, weight=w_train)
+    val_data = lgb.Dataset(X_val, label=y_val_binaria, weight=w_val)
+
+    # Esto es una aproximación al número de meses para escalar la ganancia
+    num_meses_train = len(config.MES_TRAIN) - 1 if hasattr(config, 'MES_TRAIN') else 1
+
+    # --- 2. Función Objetivo con Early Stopping y Semillerío ---
     def objective(trial: optuna.Trial) -> float:
-        num_leaves = trial.suggest_int('num_leaves', 3, 3000)
-        learning_rate = trial.suggest_float('learning_rate', 0.0001, 0.3)  # mas bajo, más iteraciones necesita
-        min_data_in_leaf = trial.suggest_int('min_data_in_leaf', 1, 20000)
-        feature_fraction = trial.suggest_float('feature_fraction', 0.1, 0.9)
-        bagging_fraction = trial.suggest_float('bagging_fraction', 0.1, 0.9)
-        lambbda_1 = trial.suggest_float('lambda_1', 0.0, 10.0)
-        lambda_2 = trial.suggest_float('lambda_2', 0.0, 10.0)
 
-        params = {
-            'objective': 'binary',
-            'metric': 'None',
-            'boosting_type': 'gbdt',
-            'first_metric_only': True,
-            'boost_from_average': True,
-            'feature_pre_filter': False,
-            'max_bin': 31,
-            'num_leaves': num_leaves,
-            'learning_rate': learning_rate,
-            'min_data_in_leaf': min_data_in_leaf,
-            'feature_fraction': feature_fraction,
-            'bagging_fraction': bagging_fraction,
-            'lambda_l1': lambbda_1,
-            'lambda_l2': lambda_2,
-            'bagging_freq': 1,
-            'seed': SEED,
-            'verbose': -1,
-            'extra_trees': True
-        }
-        train_data = lgb.Dataset(X_train,
-                                 label=y_train,  # eligir la clase
-                                 weight=w_train,
-                                 # categorical_feature=matching_categorical_features
-                                 )
-        val_data = lgb.Dataset(X_val,label=y_val_binaria,weight=w_val)
-        y_preds=[]
-        best_iters=[]
-        for semilla in semillas:
+        params = config.FIXED_PARAMS_REF.copy()
+
+        # 2.1 Sugerencia de Parámetros (Excluyendo num_boost_round)
+        for name, info in config.SEARCHABLE_PARAMS_REF.items():
+            ptype = info["type"]
+
+            if ptype == "integer":
+                params[name] = trial.suggest_int(name, info["lower"], info["upper"])
+            elif ptype == "float":
+                if info.get("log", False):
+                    params[name] = trial.suggest_float(name, info["lower"], info["upper"], log=True)
+                else:
+                    params[name] = trial.suggest_float(name, info["lower"], info["upper"])
+            elif ptype == "categorical":
+                params[name] = trial.suggest_categorical(name, info["choices"])
+
+        # 2.2 Semillerío (Entrenar N modelos con Early Stopping)
+        y_preds = []
+        best_iterations = []
+
+        for exp_idx, semilla in enumerate(semillas):
             params['seed'] = semilla
+
             model_i = lgb.train(
-                    params=params,
-                    train_set=train_data,
-                    num_boost_round= config.N_BOOSTS,
-                    valid_sets=[val_data],
-                    valid_names=['valid'],
-                    feval=lgb_gan_eval_individual,
-                    callbacks=[
-                        lgb.early_stopping(stopping_rounds=int(50 + 5/learning_rate), verbose=False),
-                        lgb.log_evaluation(period=200),
-                        ]
-                    )
-            y_pred_i = model_i.predict(X_val,num_iteration=model_i.best_iteration)
+                params=params,
+                train_set=train_data,
+                num_boost_round=NUM_BOOST_ROUND_MAX,  # Usamos el máximo de rondas (ej: 1000)
+                valid_sets=[val_data],
+                valid_names=['valid'],
+                feval=lgb_gan_eval_individual,  # Usa la métrica custom para el ES
+                callbacks=[
+                    early_stopping(first_metric_only=False, stopping_rounds=EARLY_STOPPING_ROUNDS, verbose=False),
+                    lgb.log_evaluation(period=100, show_stdv=False)
+                ]
+            )
+
+            # CRUCIAL: Predecir usando la mejor iteración determinada por Early Stopping
+            best_iter = model_i.best_iteration
+            y_pred_i = model_i.predict(X_val, num_iteration=best_iter)
+
             y_preds.append(y_pred_i)
-            best_iters.append(model_i.best_iteration)
+            best_iterations.append(best_iter)
 
+            del model_i
+            gc.collect()
+
+        # 2.3 Ensamblaje Final (Promedio de las N semillas)
         y_preds_matrix = np.vstack(y_preds)
-        y_pred_ensamble = np.mean(y_preds_matrix , axis=0)
-        ganancia_media_meseta , cliente_optimo,ganancia_max = lgb_gan_eval_ensamble(y_pred_ensamble , val_data)
-        best_iter_promedio =  np.mean(best_iters)
+        y_pred_ensamble = np.mean(y_preds_matrix, axis=0)
 
-        #guardar_iteracion(trial,ganancia_media_meseta,cliente_optimo,ganancia_max,best_iter_promedio,y_preds_matrix,best_iters,name,fecha,semillas)
+        # 2.4 Evaluación Final: Ganancia Media Meseta
+        ganancia_media_meseta, idx_max, ganancia_max = lgb_gan_eval_ensamble(y_pred_ensamble, val_data)
 
-        return float(ganancia_media_meseta) * num_meses
+        final_score = float(ganancia_media_meseta) * num_meses_train
 
-    sampler = optuna.samplers.TPESampler(seed=123, n_startup_trials=N_STARTUP_TRIALS)
+        # Registrar métricas útiles
+        trial.set_user_attr("mean_best_iter", np.mean(best_iterations))
+        trial.set_user_attr("mean_meseta_gain", float(ganancia_media_meseta))
+        trial.set_user_attr("max_gain", float(ganancia_max))
+        trial.set_user_attr("idx_max", int(idx_max))
+
+        return final_score
+    # --- 3. Creación y Ejecución del Estudio Optuna ---
+
+    sampler = optuna.samplers.TPESampler(seed=SEED)  # Usamos SEED de config
     study = optuna.create_study(
         study_name=study_name_optuna,
         direction="maximize",
@@ -158,14 +181,22 @@ def run_study(X_train, y_train, semillas, SEED,w_train, matching_categorical_fea
         storage=storage_optuna,
         load_if_exists=True
     )
-    #study.optimize(objective(SEED,X_train, y_train,w_train, w_train, None), n_trials=N_TRIALS, show_progress_bar=True)
 
     if optimizar == True:
-        study.optimize(
-            objective,
-            n_trials=N_TRIALS,
-            show_progress_bar=True
-        )
+        n_trials_realizados = len(study.trials)
+        n_trials_total = config.N_TRIALS  # Asumiendo N_TRIALS existe en config
+
+        if n_trials_realizados >= n_trials_total:
+            logger.info(f"Ya hay {n_trials_realizados} trials realizados. Saltando optimización.")
+        else:
+            n_trials_faltantes = n_trials_total - n_trials_realizados
+            logger.info(f"Ejecutando {n_trials_faltantes} trials adicionales.")
+
+            study.optimize(
+                objective,
+                n_trials=n_trials_faltantes,
+                show_progress_bar=True
+            )
 
     return study
 

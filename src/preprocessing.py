@@ -78,32 +78,50 @@ def _to_int_list(x):
     return [int(x)]  # si es un único valor
 
 
-def _undersampling(df:pl.DataFrame ,undersampling_rate:float , semilla:int) -> pl.DataFrame:
-    logger.info("Comienzo del subsampleo")
-    np.random.seed(semilla)
-    clientes_minoritaria = df.filter(pl.col("clase_ternaria") != "CONTINUA").get_column("numero_de_cliente").unique()
-    clientes_mayoritaria = df.filter(pl.col("clase_ternaria") == "CONTINUA").get_column("numero_de_cliente").unique()
+def _undersampling_efficient(df: pl.DataFrame, undersampling_rate: float, semilla: int) -> pl.DataFrame:
+    """
+    Aplica undersampling sobre registros 'CONTINUA' a nivel de fila (registro)
+    utilizando la técnica de Hash Modulo (Lazy Evaluation).
 
-    logger.info(f"Clientes minoritarios: {len(clientes_minoritaria)}")
-    logger.info(f"Clientes mayoritarios: {len(clientes_mayoritaria)}")
+    Args:
+        df: DataFrame de Polars que contiene 'clase_ternaria' y 'numero_de_cliente'.
+        undersampling_rate: Fracción de filas CONTINUA a mantener.
+        semilla: Semilla para asegurar la reproducibilidad del hash.
 
-    n_sample = int(len(clientes_mayoritaria) * undersampling_rate)
-    clientes_mayoritaria_sample = np.random.choice(clientes_mayoritaria, n_sample, replace=False)
+    Returns:
+        pl.DataFrame con undersampling aplicado.
+    """
+    logger.info("Comienzo del subsampleo a nivel de registro (Hash Modulo)")
 
-    # Unimos los IDs seleccionados
-    clientes_finales = np.concatenate([clientes_minoritaria, clientes_mayoritaria_sample])
+    # 1. Crear la columna de propensión (_hash_val)
+    # Genera un valor aleatorio/determinista entre 0 y 1 para cada fila CONTINUA,
+    # basado en el ID del cliente y la semilla.
+    df = (
+        df.lazy() # Aseguramos la evaluación perezosa para eficiencia
+        .with_columns(
+            pl.when(pl.col("clase_ternaria") == "CONTINUA")
+            .then(
+                # Hash determinista: (ID + Semilla).hash() % Escala / Escala
+                # Esto produce un número pseudo-aleatorio entre 0 y 1
+                ((pl.col("numero_de_cliente").hash() + pl.lit(semilla)).hash() % 1000000) / 1000000.0
+            )
+            .otherwise(None)
+            .alias("_hash_val")
+        )
+        # 2. Aplicar el filtro
+        .filter(
+            # Mantiene todas las filas BAJA+1 y BAJA+2 (donde _hash_val es None)
+            (pl.col("clase_ternaria") != "CONTINUA")
+            # O mantiene solo la fracción deseada de las filas CONTINUA
+            | (pl.col("_hash_val") <= undersampling_rate)
+        )
+        # 3. Limpiar columnas auxiliares y recolectar el resultado
+        .select(pl.all().exclude(["_hash_val"]))
+        .collect() # Ejecutar la consulta lazy
+    )
 
-    logger.info(f"Clientes finales para hacer undersampling: {len(clientes_finales)}")
-
-    df_train_undersampled = df.filter(pl.col("numero_de_cliente").is_in(clientes_finales))
-
-    logger.info(f"Shape original: {df.shape}")
-    logger.info(f"Shape undersampled: {df_train_undersampled.shape}")
-
-    df_train_undersampled = df_train_undersampled.sample(fraction=1.0, seed=semilla)
-
-    return df_train_undersampled
-
+    logger.info(f"Shape after undersampling: {df.shape}")
+    return df
 
 
 def split_train_data(
@@ -135,9 +153,9 @@ def split_train_data(
 
     # Hago subsampleo
     if SUB_SAMPLE is not None:
-        train_data=_undersampling(train_data , SUB_SAMPLE, semilla)
+        train_data = _undersampling_efficient(train_data, SUB_SAMPLE, semilla)  # <--- Lógica Hash Modulo
 
-    columns_drop = ["clase_ternaria", "clase_peso","clase_binaria", "clase_binaria1", "clase_binaria2"]
+    columns_drop = ["clase_ternaria", "clase_peso","clase_binaria", "clase_binaria1", "clase_binaria2",'weight', 'class_weight']
     logger.info(f"Dropeando (si existen): {columns_drop}")
 
     try:
