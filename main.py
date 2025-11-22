@@ -185,6 +185,9 @@ def main():
 
             # D. Guardar resultados
             output_file = config.PATH_FEATURES_SELECTION
+
+            Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+
             with open(output_file, "w") as f:
                 for feat in selected_features:
                     f.write(f"{feat}\n")
