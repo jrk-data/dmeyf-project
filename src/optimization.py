@@ -94,33 +94,33 @@ def run_study(X_train: pd.DataFrame, y_train: pd.Series, semillas: List[int], SE
     if f_val.sum() == 0:
         logger.warning(f"¡CUIDADO! Validation size es 0. Revisa que {MES_VALIDACION} esté incluido en tu X_train.")
 
-        # Preparar máscaras booleanas para Numpy
-        mask_val = f_val.values
+    # Preparar máscaras booleanas para Numpy
+    mask_val = f_val.values
 
-        # Asegurar que y_train y w_train sean Arrays 1D planos para poder filtrarlos
-        # (Vienen como numpy arrays desde main.py, por lo que no tienen .index ni .to_numpy)
-        y_train_arr = np.array(y_train).ravel()
-        w_train_arr = np.array(w_train).ravel()
+    # Asegurar que y_train y w_train sean Arrays 1D planos para poder filtrarlos
+    # (Vienen como numpy arrays desde main.py, por lo que no tienen .index ni .to_numpy)
+    y_train_arr = np.array(y_train).ravel()
+    w_train_arr = np.array(w_train).ravel()
 
-        # Split de X (Pandas)
-        X_val = X_train.loc[f_val].drop(columns=["foto_mes"])
-        X_train = X_train.loc[~f_val].drop(columns=["foto_mes"])  # Sobreescribimos X_train con solo entrenamiento
+    # Split de X (Pandas)
+    X_val = X_train.loc[f_val].drop(columns=["foto_mes"])
+    X_train = X_train.loc[~f_val].drop(columns=["foto_mes"])  # Sobreescribimos X_train con solo entrenamiento
 
-        # Split de y, w (Numpy usando máscara booleana, NO indices)
-        y_val_binaria = y_train_arr[mask_val]
-        w_val = w_train_arr[mask_val]
+    # Split de y, w (Numpy usando máscara booleana, NO indices)
+    y_val_binaria = y_train_arr[mask_val]
+    w_val = w_train_arr[mask_val]
 
-        y_train_binaria = y_train_arr[~mask_val]
-        w_train = w_train_arr[~mask_val]
+    y_train_binaria = y_train_arr[~mask_val]
+    w_train = w_train_arr[~mask_val]
 
-        logger.info(f"Train/Val Split. Train size: {len(X_train)}, Validation size: {len(X_val)}")
+    logger.info(f"Train/Val Split. Train size: {len(X_train)}, Validation size: {len(X_val)}")
 
-        # Convertir a arrays de NumPy 2D (N, 1) para LightGBM
-        # Nota: Ya son numpy arrays, solo hacemos reshape. No usamos .to_numpy()
-        y_train_2d = y_train_binaria.reshape(-1, 1)
-        w_train_2d = w_train.reshape(-1, 1)
-        y_val_2d = y_val_binaria.reshape(-1, 1)
-        w_val_2d = w_val.reshape(-1, 1)
+    # Convertir a arrays de NumPy 2D (N, 1) para LightGBM
+    # Nota: Ya son numpy arrays, solo hacemos reshape. No usamos .to_numpy()
+    y_train_2d = y_train_binaria.reshape(-1, 1)
+    w_train_2d = w_train.reshape(-1, 1)
+    y_val_2d = y_val_binaria.reshape(-1, 1)
+    w_val_2d = w_val.reshape(-1, 1)
 
     # Creación de Datasets LightGBM
     train_data = lgb.Dataset(X_train, label=y_train_2d.ravel(), weight=w_train_2d.ravel())
