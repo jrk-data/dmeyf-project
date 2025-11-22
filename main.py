@@ -338,14 +338,21 @@ def main():
                             # Asumiendo que run_study puede cargar el study sin datos, si optimizar=False
                             study = run_study(
                                 X_train=FULL_SPLIT['X_train_pl'].to_pandas(),
-                                # Datos dummy para evitar error de DataFrame vacío
+
+                                # --- CORRECCIÓN: Quitar .reshape(-1, 1) ---
+                                # El reshape se hace ADENTRO de run_study, aquí necesitamos mantener el índice
                                 y_train=FULL_SPLIT['y_train_binaria'],
+
+                                semillas=semillas_semillerio,
                                 SEED=config.SEEDS[0],
+
+                                # --- CORRECCIÓN: Quitar .reshape(-1, 1) ---
                                 w_train=FULL_SPLIT['w_train'],
+
+                                matching_categorical_features=None,
                                 storage_optuna=storage_optuna,
                                 study_name_optuna=study_name,
-                                optimizar=False,
-                                semillas=[],
+                                optimizar=config.OPTIMIZAR,
                             )
                             studies_by_month["CONSOLIDATED"] = study
 

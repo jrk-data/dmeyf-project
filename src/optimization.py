@@ -87,7 +87,8 @@ def run_study(X_train: pd.DataFrame, y_train: pd.Series, semillas: List[int], SE
     X_train = _coerce_object_cols(X_train)
 
     # 1. Separación Train/Validation Fija
-    f_val = X_train["foto_mes"] == MES_VALIDACION
+    valid_months = MES_VALIDACION if isinstance(MES_VALIDACION, list) else [MES_VALIDACION]
+    f_val = X_train["foto_mes"].isin(valid_months)
 
     X_val = X_train.loc[f_val].drop(columns=["foto_mes"])
     y_val_binaria = y_train[X_val.index]
