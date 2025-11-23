@@ -329,35 +329,20 @@ def main():
             semillas_semillerio = create_seed(n_semillas=100)
             study_name = config.STUDY_NAME_OPTUNA + "_CONSOLIDATED"
 
-            if config.START_POINT == 'OPTUNA':
-                study = run_study(
-                    X_train=FULL_SPLIT['X_train_pl'].to_pandas(),
-                    y_train=FULL_SPLIT['y_train_binaria'].reshape(-1, 1),  # Reshape necesario para LGBM Dataset
-                    semillas=semillas_semillerio,
-                    SEED=config.SEEDS[0],
-                    w_train=FULL_SPLIT['w_train'].reshape(-1, 1),
-                    matching_categorical_features=None,
-                    storage_optuna=storage_optuna,
-                    study_name_optuna=study_name,
-                    optimizar=config.OPTIMIZAR,
-                )
-                studies_by_month["CONSOLIDATED"] = study
+            study = run_study(
+                X_train=FULL_SPLIT['X_train_pl'].to_pandas(),
+                y_train=FULL_SPLIT['y_train_binaria'].reshape(-1, 1),  # Reshape necesario para LGBM Dataset
+                semillas=semillas_semillerio,
+                SEED=config.SEEDS[0],
+                w_train=FULL_SPLIT['w_train'].reshape(-1, 1),
+                matching_categorical_features=None,
+                storage_optuna=storage_optuna,
+                study_name_optuna=study_name,
+                optimizar=config.OPTIMIZAR,
+            )
+            studies_by_month["CONSOLIDATED"] = study
 
-            # Si entramos directo en TRAIN, cargamos el estudio existente (si no lo cargamos arriba)
-            elif config.START_POINT == 'TRAIN':
-                # Solo instanciamos el estudio sin correr optimize, para pasarlo al train_model
-                study = run_study(
-                    X_train=FULL_SPLIT['X_train_pl'].to_pandas(),
-                    y_train=FULL_SPLIT['y_train_binaria'].reshape(-1, 1),
-                    semillas=semillas_semillerio,
-                    SEED=config.SEEDS[0],
-                    w_train=FULL_SPLIT['w_train'].reshape(-1, 1),
-                    matching_categorical_features=None,
-                    storage_optuna=storage_optuna,
-                    study_name_optuna=study_name,
-                    optimizar=False,  # No optimiza, solo carga
-                )
-                studies_by_month["CONSOLIDATED"] = study
+
 
         # ---------------------------------------------------------------------------------
         # 5. ENTRENAMIENTO Y CURVAS
