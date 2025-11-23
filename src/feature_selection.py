@@ -3,6 +3,7 @@ import pandas as pd
 import polars as pl
 import lightgbm as lgb
 from logging import getLogger
+import src.config as config
 
 logger = getLogger(__name__)
 
@@ -67,6 +68,7 @@ def perform_canaritos_selection(X_train: pl.DataFrame,
         'gain': model.feature_importance(importance_type='gain')
     }).sort_values(by='gain', ascending=False).reset_index(drop=True)
 
+    importance.to_csv('gs://joaquinrk_data_bukito3/datasets/features_selection.csv', index=False)
     # 5. Corte
     # Buscamos el mejor rank de un canarito
     canaritos_ranks = importance[importance['feature'].isin(canarito_names)].index

@@ -102,7 +102,7 @@ optimization:
     num_boost_round: 1000 # <-- Máximo de iteraciones para que el ES lo detenga
 
 preprocessing:
-  SUB_SAMPLE: 0.05
+  SUB_SAMPLE: 0.1
   NUN_WINDOW_LOAD: 2
   NUN_WINDOW: 2
   #COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
@@ -168,27 +168,38 @@ competencia01:
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
   NUEVA_BASE: false
-  START_POINT: "SELECTION"        # o "PREDICT" según etapa
+  START_POINT: "TRAIN"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: true       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 5
 
 experiment:
-  STUDY_NAME_OPTUNA: "test_c03_202104_CONSOLIDADO"
+  STUDY_NAME_OPTUNA: "c03_consolidado_US_10porciento_hasta_febrero_2021"
 
   # Meses de entrenamiento (los que vas a correr en este job)
-#  MONTH_TRAIN: [201901, 201902,201903,201904,201906, 202001, 202002,202003,202004,202006, 202101, 202102, 202103, 202104]
-  MONTH_TRAIN: [  202101,202102,202104  ] # aunque se agregue acá la validación, el código después lo separa
-  MONTH_VALIDATION: [202104]
+  # IMPORTANTE --> Agregar el mes de testeo también en train
+  # aunque se agregue acá la validación, el código después lo separa
+  MONTH_TRAIN: [  201901, 201902, 201903, 201904, 201905, 201906, 201907, 201908, 201909, 201910, 201911, 201912,
+    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
+    202101, 202102  ]
+  MONTH_VALIDATION: [202102]
   MONTH_TEST: [202104]
   MONTH_PRED: [202106]
   MESES_JUNTOS: True
 
   # Mes(es) a predecir para cada escenario de negocio
   PREDICT_SCENARIOS:
-    - name: "consolidado_prediccion_junio"
-      pred_month: 202106
-        # Ahora, train_for_pred debe apuntar al ÚNICO experimento consolidado
+    - name: "prediccion_abril"
+      pred_month: 202104
       train_for_pred:
-        - train_month: "CONSOLIDATED" # Indicador de que el modelo viene del split total
-          use_experiments_from: [ "CONSOLIDATED" ] # Apuntar al nombre del estudio consolidado
+        - use_experiments_from: [ "CONSOLIDATED" ] # <--- Usa los modelos entrenados en el paso 1
+
+    - name: "prediccion_mayo"
+      pred_month: 202105
+      train_for_pred:
+        - use_experiments_from: [ "CONSOLIDATED" ]
+
+    - name: "prediccion_junio"
+      pred_month: 202106
+      train_for_pred:
+        - use_experiments_from: [ "CONSOLIDATED" ]

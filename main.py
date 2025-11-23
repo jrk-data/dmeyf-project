@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 import numpy as np
+import gc
 
 # Consola básica para errores tempranos
 logging.basicConfig(
@@ -150,7 +151,7 @@ def main():
         if config.START_POINT == 'SELECTION':
             logger.info("#### INICIO FEATURE SELECTION (CANARITOS) ####")
 
-            # A. Meses definidos para esta etapa (según tu pedido)
+            # A. Meses definidos para esta etapa
             MESES_SELECCION = [202101, 202102, 202103]
             UNDERSAMPLING_CANARITOS = 0.1
 
@@ -163,7 +164,6 @@ def main():
             )
 
             # B. Usar split_train_data para hacer el Undersampling (0.1)
-            # Pasamos MES_TEST=[] porque solo queremos el train set procesado
             logger.info(f"Aplicando split y undersampling ({UNDERSAMPLING_CANARITOS})...")
 
             split_data = split_train_data(
@@ -172,34 +172,60 @@ def main():
                 MES_TEST=[],
                 MES_PRED=[],
                 SEED=config.SEED,
-                SUB_SAMPLE=UNDERSAMPLING_CANARITOS  # <--- Undersampling del 0.1
+                SUB_SAMPLE=UNDERSAMPLING_CANARITOS
             )
 
             # C. Ejecutar lógica de Canaritos
             selected_features = perform_canaritos_selection(
                 X_train=split_data['X_train_pl'],
                 y_train=split_data['y_train_binaria'],
-                n_canaritos=20,  # Cantidad de canaritos
+                n_canaritos=20,
                 seed=config.SEED
             )
 
-            # D. Guardar resultados
+            # D. Guardar resultados (Lógica Exclusiva GCS / Bucket)
             output_file = config.PATH_FEATURES_SELECTION
+            logger.info(f"Intentando subir features seleccionadas a: {output_file}")
 
-            Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+            try:
+                # Importación local para asegurar que la librería esté disponible
+                from google.cloud import storage
 
-            with open(output_file, "w") as f:
-                for feat in selected_features:
-                    f.write(f"{feat}\n")
+                # 1. Validación de formato gs://
+                if not output_file.startswith("gs://"):
+                    raise ValueError(
+                        f"La ruta configurada debe ser un bucket (empezar con 'gs://'). Valor actual: {output_file}")
 
-            logger.info(f"✅ Lista guardada en '{output_file}'.")
-            logger.info(
-                "⚠️ RECUERDA: Copia el contenido de este archivo a 'PSI_2021_FEATURES' en tu config.yaml antes de correr OPTUNA.")
+                # 2. Parseo de la ruta: gs://bucket_name/path/to/file.txt
+                parts = output_file.replace("gs://", "").split("/", 1)
+                if len(parts) < 2:
+                    raise ValueError("La ruta del bucket parece incompleta. Debe ser: gs://bucket/carpeta/archivo.txt")
+
+                bucket_name = parts[0]
+                blob_name = parts[1]
+
+                # 3. Conexión y subida
+                client = storage.Client()  # Toma credenciales de tu entorno (gcloud auth o VM)
+                bucket = client.bucket(bucket_name)
+                blob = bucket.blob(blob_name)
+
+                # Convertir lista a string
+                content_str = "\n".join(selected_features)
+
+                # Subir contenido
+                blob.upload_from_string(content_str)
+
+                logger.info(f"✅ Lista guardada exitosamente en el Bucket: {output_file}")
+                logger.info(
+                    "⚠️ RECUERDA: Copia el contenido de este archivo a 'PSI_2021_FEATURES' en tu config.yaml antes de correr OPTUNA.")
+
+            except Exception as e:
+                logger.error(f"❌ Error crítico al guardar en Bucket: {e}")
+                raise  # Detenemos la ejecución porque si no se guarda, no sirve seguir.
 
             # Cortamos ejecución aquí
             logger.info("Fin de proceso SELECTION.")
             return
-
         # ---------------------------------------------------------------------------------
         # 3. SPLIT POR MES PARA OPTUNA / TRAIN
         # ---------------------------------------------------------------------------------
@@ -262,8 +288,11 @@ def main():
 
             logger.info(f"Registros tras filtro de fechas: {data_filtered.height}")
 
-            # IMPORTANTE: split_train_data filtra internamente por MES_TRAIN.
-            # Asegúrate que config.MES_TRAIN tenga TODOS los meses que quieres usar (201901..202103)
+            # --- LIMPIEZA 1: Ya no necesitas data_full ---
+            del data_full
+            gc.collect()
+            logger.info("Memoria liberada: data_full eliminada.")
+            # ---------------------------------------------
 
             # Aplicar Split y Undersampling (0.5)
             logger.info("Ejecutando Split con Undersampling 0.5...")
@@ -274,10 +303,18 @@ def main():
                 MES_TEST=MES_TEST_LIST,
                 MES_PRED=MES_PRED_LIST,
                 SEED=config.SEED,
-                SUB_SAMPLE=0.5  # <--- Undersampling del 0.5 a los CONTINUA (que ya son >202001)
+                SUB_SAMPLE= config.SUB_SAMPLE # <--- Undersampling del 0.5 a los CONTINUA (que ya son >202001)
             )
 
             logger.info(f"Split Consolidado listo. Train size: {len(FULL_SPLIT['X_train_pl'])}")
+
+            # --- LIMPIEZA 2: Ya no necesitas data_filtered ---
+            # FULL_SPLIT ya tiene copias o vistas de los datos necesarios
+            del data_filtered
+            gc.collect()
+            logger.info("Memoria liberada: data_filtered eliminada.")
+            # -------------------------------------------------
+
 
         # ---------------------------------------------------------------------------------
         # 4. OPTIMIZACIÓN HIPERPARÁMETROS

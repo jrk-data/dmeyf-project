@@ -126,9 +126,6 @@ def run_study(X_train: pd.DataFrame, y_train: pd.Series, semillas: List[int], SE
     train_data = lgb.Dataset(X_train, label=y_train_2d.ravel(), weight=w_train_2d.ravel())
     val_data = lgb.Dataset(X_val, label=y_val_2d.ravel(), weight=w_val_2d.ravel())
 
-    # Esto es una aproximación al número de meses para escalar la ganancia
-    num_meses_train = len(config.MES_TRAIN) - 1 if hasattr(config, 'MES_TRAIN') else 1
-
     # --- 2. Función Objetivo con Early Stopping y Semillerío ---
     def objective(trial: optuna.Trial) -> float:
 
@@ -185,7 +182,7 @@ def run_study(X_train: pd.DataFrame, y_train: pd.Series, semillas: List[int], SE
         # 2.4 Evaluación Final: Ganancia Media Meseta
         ganancia_media_meseta, idx_max, ganancia_max = lgb_gan_eval_ensamble(y_pred_ensamble, val_data)
 
-        final_score = float(ganancia_media_meseta) * num_meses_train
+        final_score = float(ganancia_media_meseta)
 
         # Registrar métricas útiles
         trial.set_user_attr("mean_best_iter", np.mean(best_iterations))
