@@ -44,9 +44,9 @@ vm:
 
 optimization:
   # --- Configuración del Experimento ---
-  STUDY_NAME_OPTUNA: 'prueba_semillerio_refactorizada'
+  STUDY_NAME_OPTUNA: 'c03_semillerio_US_50porciento_desde_202001'
   N_EXPERIMENTS: 3        # Semillerío: Número de modelos con semillas distintas
-  SEMILLERIO: 10          # Número de predicciones a promediar por experimento (Tu código original usaba la longitud de 'semillas')
+  SEMILLERIO: 100          # Número de predicciones a promediar por experimento (Tu código original usaba la longitud de 'semillas')
   N_TRIALS: 20                                  # 20 warmup + 30 bayesianos
   N_STARTUP_TRIALS: 20
   NFOLD: 5
@@ -102,7 +102,7 @@ optimization:
     num_boost_round: 1000 # <-- Máximo de iteraciones para que el ES lo detenga
 
 preprocessing:
-  SUB_SAMPLE: 0.1
+  SUB_SAMPLE: 0.5
   NUN_WINDOW_LOAD: 2
   NUN_WINDOW: 2
   #COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
@@ -142,14 +142,6 @@ competencia03:
   BQ_TABLE_TARGETS: "targets"
   BQ_TABLE_FEATURES: "c03_features"
   BQ_TABLE_FEATURES_HISTORICAL: "c03_features_historical"
-  MONTH_TRAIN: [ 201901, 201902,201903,201904,201906, 202001, 202002,202003,202004,202006, 202101, 202102, 202103 ]
-
-  MONTH_VALIDATION: [ 202104 ]
-  MONTH_TEST: [ 202104]
-  MONTH_PRED: [ 202106 ]
-
-  GANANCIA_ACIERTO: 780000
-  COSTO_ESTIMULO: 20000
 
   TARGET: "clase_ternaria_binaria"           # ajustá al nombre real en tu CSV
   ID_COL: "numero_de_cliente"
@@ -168,38 +160,38 @@ competencia01:
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
   NUEVA_BASE: false
-  START_POINT: "PREDICT"        # o "PREDICT" según etapa
+  START_POINT: "TRAIN"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: true       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 5
 
 experiment:
-  STUDY_NAME_OPTUNA: "c03_consolidado_US_10porciento_hasta_febrero_2021"
+  STUDY_NAME_OPTUNA: "c03_semillerio_US_50porciento_desde_202001"
 
   # Meses de entrenamiento (los que vas a correr en este job)
   # IMPORTANTE --> Agregar el mes de testeo también en train
   # aunque se agregue acá la validación, el código después lo separa
-  MONTH_TRAIN: [  201901, 201902, 201903, 201904, 201905, 201906, 201907, 201908, 201909, 201910, 201911, 201912,
+  MONTH_TRAIN: [
     202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
-    202101, 202102  ]
-  MONTH_VALIDATION: [202102]
-  MONTH_TEST: [202104]
-  MONTH_PRED: [202106]
+    202101, 202102, 202103  ]
+  MONTH_VALIDATION: [202103]
+  MONTH_TEST: [202105]
+  MONTH_PRED: [202107]
   MESES_JUNTOS: True
 
   # Mes(es) a predecir para cada escenario de negocio
   PREDICT_SCENARIOS:
-    - name: "prediccion_abril"
-      pred_month: 202104
-      train_for_pred:
-        - use_experiments_from: [ "CONSOLIDATED" ] # <--- Usa los modelos entrenados en el paso 1
-
     - name: "prediccion_mayo"
       pred_month: 202105
       train_for_pred:
-        - use_experiments_from: [ "CONSOLIDATED" ]
+        - use_experiments_from: [ "CONSOLIDATED" ] # <--- Usa los modelos entrenados en el paso 1
 
     - name: "prediccion_junio"
       pred_month: 202106
+      train_for_pred:
+        - use_experiments_from: [ "CONSOLIDATED" ]
+
+    - name: "prediccion_julio"
+      pred_month: 202107
       train_for_pred:
         - use_experiments_from: [ "CONSOLIDATED" ]
