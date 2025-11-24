@@ -6,7 +6,7 @@ DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz
 DATA_PATH_C03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
 PATH_FEATURES_SELECTION: "gs://joaquinrk_data_bukito3/datasets/features_selection.txt"
 
-CARGAR_HISTORIA_COMPLETA: True
+CARGAR_HISTORIA_COMPLETA: False
 
 # BIG QUERY DATOS
 bigquery:
@@ -171,9 +171,10 @@ experiment:
   # Meses de entrenamiento (los que vas a correr en este job)
   # IMPORTANTE --> Agregar el mes de testeo también en train
   # aunque se agregue acá la validación, el código después lo separa
-  MONTH_TRAIN: [
-    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
-    202101, 202102, 202103  ]
+#  MONTH_TRAIN: [
+#    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
+#    202101, 202102, 202103  ]
+  MONTH_TRAIN: [202103]
   MONTH_VALIDATION: [202103]
   MONTH_TEST: [202105]
   MONTH_PRED: [202107]
