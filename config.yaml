@@ -44,7 +44,8 @@ vm:
 
 optimization:
   # --- Configuración del Experimento ---
-  STUDY_NAME_OPTUNA: 'c03_semillerio_US_50porciento_desde_202001'
+ # STUDY_NAME_OPTUNA: 'c03_semillerio_US_50porciento_desde_202001'
+  STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   N_EXPERIMENTS: 3        # Semillerío: Número de modelos con semillas distintas
   SEMILLERIO: 100          # Número de predicciones a promediar por experimento (Tu código original usaba la longitud de 'semillas')
   N_TRIALS: 20                                  # 20 warmup + 30 bayesianos
@@ -166,8 +167,8 @@ flags:
   TOP_K_MODEL: 5
 
 experiment:
-  STUDY_NAME_OPTUNA: "c03_semillerio_US_50porciento_desde_202001"
-
+  #STUDY_NAME_OPTUNA: "c03_semillerio_US_50porciento_desde_202001"
+  STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   # Meses de entrenamiento (los que vas a correr en este job)
   # IMPORTANTE --> Agregar el mes de testeo también en train
   # aunque se agregue acá la validación, el código después lo separa
