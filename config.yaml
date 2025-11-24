@@ -6,7 +6,7 @@ DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz
 DATA_PATH_C03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
 PATH_FEATURES_SELECTION: "gs://joaquinrk_data_bukito3/datasets/features_selection.txt"
 
-CARGAR_HISTORIA_COMPLETA: False
+CARGAR_HISTORIA_COMPLETA: True
 
 # BIG QUERY DATOS
 bigquery:
@@ -44,8 +44,8 @@ vm:
 
 optimization:
   # --- Configuración del Experimento ---
- # STUDY_NAME_OPTUNA: 'c03_semillerio_US_50porciento_desde_202001'
-  STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
+  STUDY_NAME_OPTUNA: 'c03_semillerio_US_50porciento_desde_202001'
+  #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   N_EXPERIMENTS: 3        # Semillerío: Número de modelos con semillas distintas
   SEMILLERIO: 100          # Número de predicciones a promediar por experimento (Tu código original usaba la longitud de 'semillas')
   N_TRIALS: 20                                  # 20 warmup + 30 bayesianos
@@ -167,15 +167,15 @@ flags:
   TOP_K_MODEL: 5
 
 experiment:
-  #STUDY_NAME_OPTUNA: "c03_semillerio_US_50porciento_desde_202001"
-  STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
+  STUDY_NAME_OPTUNA: "c03_semillerio_US_50porciento_desde_202001"
+  #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   # Meses de entrenamiento (los que vas a correr en este job)
   # IMPORTANTE --> Agregar el mes de testeo también en train
   # aunque se agregue acá la validación, el código después lo separa
-#  MONTH_TRAIN: [
-#    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
-#    202101, 202102, 202103  ]
-  MONTH_TRAIN: [202102,202103]
+  MONTH_TRAIN: [
+    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
+    202101, 202102, 202103  ]
+  #MONTH_TRAIN: [202102,202103]
   MONTH_VALIDATION: [202103]
   MONTH_TEST: [202105]
   MONTH_PRED: [202107]
