@@ -272,7 +272,7 @@ def main():
 
             logger.info("Aplicando Filtros de Negocio:")
             logger.info("1. BAJA+1 / BAJA+2 >= 201901")
-            logger.info("2. CONTINUA >= 202001 (se aplicará subsample 0.5 luego)")
+            logger.info(f"2. CONTINUA >= 202001 (se aplicará subsample {config.SUB_SAMPLE} luego)")
 
             # Filtro Polars
             data_filtered = data_full.filter(
@@ -295,7 +295,7 @@ def main():
             # ---------------------------------------------
 
             # Aplicar Split y Undersampling (0.5)
-            logger.info("Ejecutando Split con Undersampling 0.5...")
+            logger.info(f"Ejecutando Split con Undersampling {config.SUB_SAMPLE}...")
 
             FULL_SPLIT = split_train_data(
                 data=data_filtered,
