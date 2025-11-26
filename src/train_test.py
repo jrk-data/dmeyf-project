@@ -206,9 +206,7 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
 
     if 'foto_mes' in Xif.columns:
         meses_unicos = sorted(Xif['foto_mes'].unique())
-        # Para el título del gráfico (formato legible)
         meses_titulo = ", ".join([str(m) for m in meses_unicos])
-        # Para el nombre del archivo (formato sin espacios ni comas)
         meses_archivo_str = "_".join([str(m) for m in meses_unicos])
 
     curvas = []
@@ -226,6 +224,24 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     model_files = sorted([p for p in dir_model_opt.glob("*.txt")] + [p for p in dir_model_opt.glob("*.bin")])
     if not model_files:
         raise RuntimeError(f"No hay modelos válidos en {dir_model_opt}")
+
+    # --- CORRECCIÓN: Definición explicita de modelos_validos ---
+    modelos_validos = []
+    for p in model_files:
+        if not p.exists() or p.stat().st_size == 0:
+            logger.warning(f"Saltando modelo inválido (no existe o vacío): {p}")
+            continue
+        try:
+            # Check rápido de que sea leíble
+            _ = lgb.Booster(model_file=str(p))
+            modelos_validos.append(p)
+        except LightGBMError as e:
+            logger.warning(f"Saltando modelo inválido (no es booster LGBM): {p} | {e}")
+            continue
+
+    if not modelos_validos:
+        raise RuntimeError(f"No quedan modelos válidos en {dir_model_opt}")
+    # -----------------------------------------------------------
 
     # Crear carpeta de salida para los gráficos
     curvas_dir = dir_model_opt / "curvas_de_complejidad"
@@ -289,8 +305,7 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
         # Línea vertical del máximo (discreta)
         plt.axvline(x=k_mejor, color=color_linea, linestyle='--', linewidth=0.8, alpha=0.5)
 
-        # --- Guardado Individual (OPCIONAL: Crea una figura nueva temporal para no ensuciar la conjunta) ---
-        # Si quieres un archivo SOLO con este modelo:
+        # --- Guardado Individual ---
         fig_temp = plt.figure(figsize=(10, 6))
         plt.plot(x_envios, curva_segmento, color=color_linea, label=nombre)
         plt.axvline(x=k_mejor, color=color_linea, linestyle='--', label=f'Max: {k_mejor}')
@@ -300,13 +315,12 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
         plt.legend()
         plt.grid(True, alpha=0.3)
 
-        # NOMBRE DE ARCHIVO ACTUALIZADO: lgb_topX_seed_Y_202105_202107.jpg
         nombre_archivo_individual = f"{nombre}_{meses_archivo_str}.jpg"
         plt.savefig(curvas_dir / nombre_archivo_individual, dpi=150)
-        plt.close(fig_temp)  # Cerramos la figura temporal
+        plt.close(fig_temp)
 
     # ----- Volvemos a la figura conjunta (promedio) -----
-    plt.figure(1)  # Recuperamos la figura 1 si se perdió el foco
+    plt.figure(1)
 
     curvas_np = np.vstack(curvas)
     promedio = curvas_np.mean(axis=0)
@@ -319,8 +333,8 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     x_k_idx = max(x_k_mejor - 1, 0)
     x_thr_opt = float(np.mean([p_sorted[x_k_idx] for p_sorted in probs_ordenadas]))
 
-    plt.plot(x_envios, promedio, linewidth=2.5, linestyle=LS_PROM, color='black', alpha=ALPHA_PROM, label=f'Promedio',
-             zorder=10)
+    plt.plot(x_envios, promedio, linewidth=2.5, linestyle=LS_PROM, color='black', alpha=ALPHA_PROM,
+             label=f'Promedio', zorder=10)
     plt.axvline(x=x_k_mejor, color='black', linestyle=':', linewidth=2, label=f'Corte Promedio ({x_k_mejor})')
 
     plt.title(f'Curvas de Ganancia - Meses: {meses_titulo}', fontsize=14)
@@ -330,13 +344,11 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
-    # Guardar gráfico conjunto con los meses en el nombre
     nombre_archivo_conjunto = f"curva_ganancia_conjunta_{meses_archivo_str}.jpg"
     plt.savefig(curvas_dir / nombre_archivo_conjunto, dpi=300)
     plt.close()
 
-    # ... (El resto del código de normalización y guardado CSV se mantiene igual) ...
-    # Salida normalizada (incluye probabilidad de corte)
+    # Salida normalizada
     mejores_cortes_normalizado = {
         nombre: {'k': int(k), 'ganancia': float(g), 'thr_opt': float(thr)}
         for nombre, (k, g, thr) in mejores_cortes.items()
@@ -351,7 +363,6 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     resumen_path = dir_model_opt / resumen_csv_name
     nuevos = pd.DataFrame(resumen_rows)
 
-    # ... Bloque DuckDB igual que antes ...
     try:
         with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
             con.execute("CREATE OR REPLACE TEMP VIEW nuevos_data AS SELECT * FROM nuevos;")
