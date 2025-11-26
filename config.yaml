@@ -162,7 +162,7 @@ flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
   NUEVA_BASE: false
   START_POINT: "TRAIN"        # o "PREDICT" según etapa
-  RUN_OPTIMIZATION: true       # corre optuna si faltan trials
+  RUN_OPTIMIZATION: false       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 5
 
@@ -176,7 +176,8 @@ experiment:
     202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
     202101, 202102, 202103  ]
   #MONTH_TRAIN: [202102,202103]
-  MONTH_VALIDATION: [202103]
+  MONTH_VALIDATION: [202105, 202107]
+  #MONTH_VALIDATION: [202103]
   MONTH_TEST: [202105]
   MONTH_PRED: [202107]
   MESES_JUNTOS: True
