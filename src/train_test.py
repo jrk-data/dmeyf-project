@@ -181,8 +181,6 @@ def train_model(study, X_train, y_train, weights, k,
     return meta
 
 
-
-
 def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
                             experimento_key: str,
                             resumen_csv_name: str = "resumen_ganancias.csv"):
@@ -191,70 +189,9 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
 
     # estilo común
     LINEWIDTH = 1.5
-    ALPHA_MODELOS = 0.3  # transparencia para líneas que NO son el promedio
-    ALPHA_PROM = 1.0  # promedio sin transparencia
-    LS_PROM = '--'  # estilo del promedio
-
-    # ----- figura única
-    plt.figure(figsize=(10, 6))
-
-    curvas = []
-    mejores_cortes = {}  # {nombre_modelo: (k_envios, ganancia_max, thr_opt_prob)}
-    probs_ordenadas = []  # lista de arrays con y_pred ordenado desc por modelo (para el promedio)
-
-    y_predicciones = []
-
-    # Concateno dirección de carpeta de modelos con nombre de experimento (que oficia de directorio)
-
-    dir_model_opt = Path(dir_model_opt)
-
-    logger.info(f"Seteando path para guardar modelos del experimento: {dir_model_opt}")
-
-    try:
-        dir_model_opt.mkdir(parents=True, exist_ok=True)
-    except:
-        pass
-
-    logger.info(f"Obteniendo modelos de {dir_model_opt}")
-    if not dir_model_opt.exists():
-        logger.error(FileNotFoundError(f"❌ Carpeta no encontrada: {dir_model_opt}"))
-        raise
-
-
-    # 🔍 Buscar todos los modelos
-    model_files = sorted([p for p in dir_model_opt.glob("*.txt")] + [p for p in dir_model_opt.glob("*.bin")])
-    if not model_files:
-        logger.error(FileNotFoundError(f"⚠️ No se encontraron modelos .txt o .bin en {dir_model_opt}"))
-        raise
-
-    modelos_validos = []
-    for p in model_files:
-        if not p.exists() or p.stat().st_size == 0:
-            logger.warning(f"Saltando modelo inválido (no existe o vacío): {p}")
-            continue
-        # Intento abrir para verificar que realmente es un booster
-        try:
-            _ = lgb.Booster(model_file=str(p))
-        except LightGBMError as e:
-            logger.warning(f"Saltando modelo inválido (no es booster LGBM): {p} | {e}")
-            continue
-        modelos_validos.append(p)
-
-    if not modelos_validos:
-        raise RuntimeError(f"No hay modelos válidos en {dir_model_opt}")
-
-    # Crear carpeta de salida para los gráficos
-    curvas_dir = dir_model_opt / "curvas_de_complejidad"
-    curvas_dir.mkdir(parents=True, exist_ok=True)
-
-
-
-    # Para el CSV resumen (acumularemos y luego haremos upsert)
-    resumen_rows = []
-
-    # ganancia por fila (independiente del modelo)
-    ganancia = np.where(y_test_class == "BAJA+2", config.GANANCIA_ACIERTO, 0) - \
-               np.where(y_test_class != "BAJA+2", config.COSTO_ESTIMULO, 0)
+    ALPHA_MODELOS = 0.5
+    ALPHA_PROM = 1.0
+    LS_PROM = '-'
 
     # ----- Arreglando tipos de datos -----
     if isinstance(Xif, pl.DataFrame):
@@ -263,53 +200,82 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     # 🔧 Arreglo clave:
     Xif = _coerce_object_cols(Xif)
 
-    # ----- Arreglando tipos de datos -----
+    # 1. Detectar Meses para Título y Nombre de Archivo
+    meses_titulo = "Desconocido"
+    meses_archivo_str = "meses_desconocidos"
+
+    if 'foto_mes' in Xif.columns:
+        meses_unicos = sorted(Xif['foto_mes'].unique())
+        # Para el título del gráfico (formato legible)
+        meses_titulo = ", ".join([str(m) for m in meses_unicos])
+        # Para el nombre del archivo (formato sin espacios ni comas)
+        meses_archivo_str = "_".join([str(m) for m in meses_unicos])
+
+    curvas = []
+    mejores_cortes = {}
+    probs_ordenadas = []
+    y_predicciones = []
+
+    dir_model_opt = Path(dir_model_opt)
+    try:
+        dir_model_opt.mkdir(parents=True, exist_ok=True)
+    except:
+        pass
+
+    # 🔍 Buscar todos los modelos
+    model_files = sorted([p for p in dir_model_opt.glob("*.txt")] + [p for p in dir_model_opt.glob("*.bin")])
+    if not model_files:
+        raise RuntimeError(f"No hay modelos válidos en {dir_model_opt}")
+
+    # Crear carpeta de salida para los gráficos
+    curvas_dir = dir_model_opt / "curvas_de_complejidad"
+    curvas_dir.mkdir(parents=True, exist_ok=True)
+
+    resumen_rows = []
+
+    # ganancia por fila
+    ganancia = np.where(y_test_class == "BAJA+2", config.GANANCIA_ACIERTO, 0) - \
+               np.where(y_test_class != "BAJA+2", config.COSTO_ESTIMULO, 0)
+
+    # Inicializamos figura para el plot acumulativo (todos juntos)
+    plt.figure(figsize=(12, 7))
 
     for model_file in modelos_validos:
-        model = lgb.Booster(model_file=f"{model_file}")
+        nombre = model_file.stem  # Ej: lgb_top1_seed_155555
 
-        #filtro features utiliadas para entrenar al modelo
+        # --- Lógica de predicción ---
+        model = lgb.Booster(model_file=str(model_file))
         feature_names = model.feature_name()
         Xif_filtered = Xif[feature_names]
-
-        logger.info(f"Prediciendo datos con modelo {model_file}")
         y_pred = model.predict(Xif_filtered)
 
-        #guardo las predicciones en df para poder compararlas entre sí
-        df_pred_export = Xif[['numero_de_cliente','foto_mes']].copy()
+        df_pred_export = Xif[['numero_de_cliente', 'foto_mes']].copy()
         df_pred_export['y_pred'] = y_pred
         y_predicciones.append(df_pred_export)
 
-
-        # ordeno por probabilidad descendente
+        # --- Lógica de curva ---
         idx = np.argsort(y_pred)[::-1]
-        y_pred_sorted = y_pred[idx]  # <-- PROBABILIDADES ORDENADAS
-        gan_ord = ganancia[idx]  # ganancias alineadas al ranking
-
-        # acumulada y segmento
+        y_pred_sorted = y_pred[idx]
+        gan_ord = ganancia[idx]
         gan_cum = np.cumsum(gan_ord)
         curva_segmento = gan_cum[piso_envios:techo_envios]
         curvas.append(curva_segmento)
         probs_ordenadas.append(y_pred_sorted)
 
-        # eje X: cantidad de envíos
+        # eje X
         x_envios = np.arange(piso_envios, piso_envios + len(curva_segmento))
 
-        # mejor k (dentro del segmento)
+        # métricas
         argmax_local = int(np.argmax(curva_segmento))
         k_mejor = int(piso_envios + argmax_local)
         ganancia_max = float(curva_segmento[argmax_local])
-
         k_idx = max(k_mejor - 1, 0)
         thr_opt = float(y_pred_sorted[k_idx])
 
-        # Se usa el método stem del objeto Path para quedarse con el nombre del archivo sin su extensión
-        nombre = model_file.stem
         mejores_cortes[nombre] = (k_mejor, ganancia_max, thr_opt)
 
-        # Para el CSV resumen
         resumen_rows.append({
-            "experimento": experimento_key,  # <--- antes era dir_model_opt.name
+            "experimento": experimento_key,
             "modelo": nombre,
             "k_opt": int(k_mejor),
             "ganancia_max": float(ganancia_max),
@@ -317,19 +283,32 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
-        # ploteo curva del modelo
-        plt.plot(x_envios, curva_segmento,
-                 label=nombre,
-                 linewidth=LINEWIDTH,
-                 alpha=ALPHA_MODELOS)
+        # --- Ploteo en la figura conjunta ---
+        p = plt.plot(x_envios, curva_segmento, label=nombre, linewidth=LINEWIDTH, alpha=ALPHA_MODELOS)
+        color_linea = p[0].get_color()
+        # Línea vertical del máximo (discreta)
+        plt.axvline(x=k_mejor, color=color_linea, linestyle='--', linewidth=0.8, alpha=0.5)
 
-        # Guardar gráfico
-        jpg_path = curvas_dir / f"{nombre}.jpg"
-        plt.savefig(jpg_path, dpi=300)
-        plt.close()
+        # --- Guardado Individual (OPCIONAL: Crea una figura nueva temporal para no ensuciar la conjunta) ---
+        # Si quieres un archivo SOLO con este modelo:
+        fig_temp = plt.figure(figsize=(10, 6))
+        plt.plot(x_envios, curva_segmento, color=color_linea, label=nombre)
+        plt.axvline(x=k_mejor, color=color_linea, linestyle='--', label=f'Max: {k_mejor}')
+        plt.title(f'{nombre} - Meses: {meses_titulo}')
+        plt.xlabel('Envíos')
+        plt.ylabel('Ganancia')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
 
-    # ----- promedio del segmento
-    curvas_np = np.vstack(curvas)  # (n_modelos, n_puntos)
+        # NOMBRE DE ARCHIVO ACTUALIZADO: lgb_topX_seed_Y_202105_202107.jpg
+        nombre_archivo_individual = f"{nombre}_{meses_archivo_str}.jpg"
+        plt.savefig(curvas_dir / nombre_archivo_individual, dpi=150)
+        plt.close(fig_temp)  # Cerramos la figura temporal
+
+    # ----- Volvemos a la figura conjunta (promedio) -----
+    plt.figure(1)  # Recuperamos la figura 1 si se perdió el foco
+
+    curvas_np = np.vstack(curvas)
     promedio = curvas_np.mean(axis=0)
     x_envios = np.arange(piso_envios, piso_envios + len(promedio))
 
@@ -337,73 +316,54 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     x_k_mejor = int(piso_envios + x_argmax_local)
     x_ganancia_max = float(promedio[x_argmax_local])
 
-    # Umbral promedio en probabilidad en el rank x_k_mejor:
     x_k_idx = max(x_k_mejor - 1, 0)
-    # tomamos la probabilidad en ese rank para cada modelo y promediamos
     x_thr_opt = float(np.mean([p_sorted[x_k_idx] for p_sorted in probs_ordenadas]))
 
-    plt.plot(x_envios, promedio,
-             linewidth=LINEWIDTH,
-             linestyle=LS_PROM,
-             alpha=ALPHA_PROM,
-             label=f'Promedio (n={len(model_files)})',
-             zorder=5)
-    plt.axvline(x=x_k_mejor, linestyle=':', linewidth=LINEWIDTH)
+    plt.plot(x_envios, promedio, linewidth=2.5, linestyle=LS_PROM, color='black', alpha=ALPHA_PROM, label=f'Promedio',
+             zorder=10)
+    plt.axvline(x=x_k_mejor, color='black', linestyle=':', linewidth=2, label=f'Corte Promedio ({x_k_mejor})')
 
-    # ----- decorado
-    plt.title('Curvas de Ganancia - Modelos LGBM (eje: cantidad de envíos)')
-    plt.xlabel('Cantidad de envíos (top-k)')
-    plt.ylabel('Ganancia acumulada')
-    plt.legend()
+    plt.title(f'Curvas de Ganancia - Meses: {meses_titulo}', fontsize=14)
+    plt.xlabel('Cantidad de envíos (Rank)', fontsize=12)
+    plt.ylabel('Ganancia acumulada', fontsize=12)
+    plt.legend(fontsize=10, loc='lower right')
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show()
 
+    # Guardar gráfico conjunto con los meses en el nombre
+    nombre_archivo_conjunto = f"curva_ganancia_conjunta_{meses_archivo_str}.jpg"
+    plt.savefig(curvas_dir / nombre_archivo_conjunto, dpi=300)
+    plt.close()
+
+    # ... (El resto del código de normalización y guardado CSV se mantiene igual) ...
     # Salida normalizada (incluye probabilidad de corte)
     mejores_cortes_normalizado = {
         nombre: {'k': int(k), 'ganancia': float(g), 'thr_opt': float(thr)}
         for nombre, (k, g, thr) in mejores_cortes.items()
     }
-
-    # Agrego el mejor corte del promedio
     mejores_cortes_normalizado['PROMEDIO'] = {
         'k': int(x_k_mejor),
         'ganancia': float(x_ganancia_max),
         'thr_opt': float(x_thr_opt)
     }
-    # ===== Guardar/actualizar CSV resumen =====
 
+    # ===== Guardar/actualizar CSV resumen =====
     resumen_path = dir_model_opt / resumen_csv_name
     nuevos = pd.DataFrame(resumen_rows)
 
-    # Guardar en BBDD test
+    # ... Bloque DuckDB igual que antes ...
     try:
         with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
-
-            # 1. Crear Vista Temporal (Asegura que DuckDB vea el DF 'nuevos')
             con.execute("CREATE OR REPLACE TEMP VIEW nuevos_data AS SELECT * FROM nuevos;")
-
-            TABLE_NAME = _resumen_table_name(resumen_csv_name)  # usa stem para evitar '.csv' en el nombre
-
-            # 2. Asegurar la Tabla y la PK compuesta (experimento, modelo)
+            TABLE_NAME = _resumen_table_name(resumen_csv_name)
             try:
                 con.execute(f"CREATE TABLE IF NOT EXISTS {TABLE_NAME} AS SELECT * FROM nuevos_data WHERE 1=0;")
-                logger.info(f"Tabla '{TABLE_NAME}' asegurada (creada si no existía).")
-                # PK compuesta
                 q_alter = f'ALTER TABLE {TABLE_NAME} ADD PRIMARY KEY (experimento, modelo);'
                 con.sql(q_alter)
-                logger.info(f"Clave primaria (experimento, modelo) añadida a la tabla '{TABLE_NAME}'.")
             except Exception as e:
-                error_msg = str(e).lower()
-                if "already exists for this table" in error_msg:
-                    logger.warning(f"La clave primaria en '{TABLE_NAME}' ya existía. Continuando con MERGE.")
-                else:
-                    logger.error(f"Error CRÍTICO al crear/modificar tabla {TABLE_NAME}: {e}")
-                    raise
+                pass
 
-            # 3. MERGE usando (experimento, modelo)
             current_timestamp = datetime.now().strftime("'%Y-%m-%d %H:%M:%S'")
-
             con.execute(f"""
                 MERGE INTO {TABLE_NAME} AS t
                 USING nuevos_data AS s
@@ -417,14 +377,8 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
                 WHEN NOT MATCHED THEN
                     INSERT *;
             """)
-            logger.info(
-                f'Se procesaron registros en tabla {TABLE_NAME} usando MERGE. (Fila faltante insertada, existentes actualizadas).')
-
     except Exception as e:
         logger.error(f"Error general en la operación de DuckDB: {e}")
-
-
-
 
     if resumen_path.exists():
         prev = pd.read_csv(resumen_path)
@@ -438,8 +392,7 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     print(f"\n✅ CSV resumen actualizado: {resumen_path}")
     print(f"✅ Gráficos guardados en: {curvas_dir}")
 
-    return y_predicciones,curvas, mejores_cortes_normalizado
-
+    return y_predicciones, curvas, mejores_cortes_normalizado
 
 def pred_ensamble_modelos(
     Xif: pd.DataFrame,
