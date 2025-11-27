@@ -200,7 +200,7 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     # 🔧 Arreglo clave:
     Xif = _coerce_object_cols(Xif)
 
-    # 1. Detectar Meses para Título y Nombre de Archivo
+    # 1. Detectar Meses para Título y Nombre de CARPETA
     meses_titulo = "Desconocido"
     meses_archivo_str = "meses_desconocidos"
 
@@ -225,14 +225,13 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     if not model_files:
         raise RuntimeError(f"No hay modelos válidos en {dir_model_opt}")
 
-    # --- CORRECCIÓN: Definición explicita de modelos_validos ---
+    # --- Definición explicita de modelos_validos ---
     modelos_validos = []
     for p in model_files:
         if not p.exists() or p.stat().st_size == 0:
             logger.warning(f"Saltando modelo inválido (no existe o vacío): {p}")
             continue
         try:
-            # Check rápido de que sea leíble
             _ = lgb.Booster(model_file=str(p))
             modelos_validos.append(p)
         except LightGBMError as e:
@@ -241,11 +240,17 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
 
     if not modelos_validos:
         raise RuntimeError(f"No quedan modelos válidos en {dir_model_opt}")
-    # -----------------------------------------------------------
 
-    # Crear carpeta de salida para los gráficos
-    curvas_dir = dir_model_opt / "curvas_de_complejidad"
-    curvas_dir.mkdir(parents=True, exist_ok=True)
+    # -----------------------------------------------------------
+    # 📂 CREACIÓN DE CARPETA ESPECÍFICA POR MES/PERIODO
+    # -----------------------------------------------------------
+    # Estructura: .../curvas_de_complejidad/202105_202107/
+    base_curvas_dir = dir_model_opt / "curvas_de_complejidad"
+    target_folder = base_curvas_dir / meses_archivo_str
+
+    # Creamos la carpeta (y la base si no existe)
+    target_folder.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Guardando curvas en: {target_folder}")
 
     resumen_rows = []
 
@@ -302,7 +307,6 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
         # --- Ploteo en la figura conjunta ---
         p = plt.plot(x_envios, curva_segmento, label=nombre, linewidth=LINEWIDTH, alpha=ALPHA_MODELOS)
         color_linea = p[0].get_color()
-        # Línea vertical del máximo (discreta)
         plt.axvline(x=k_mejor, color=color_linea, linestyle='--', linewidth=0.8, alpha=0.5)
 
         # --- Guardado Individual ---
@@ -315,8 +319,9 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
         plt.legend()
         plt.grid(True, alpha=0.3)
 
-        nombre_archivo_individual = f"{nombre}_{meses_archivo_str}.jpg"
-        plt.savefig(curvas_dir / nombre_archivo_individual, dpi=150)
+        nombre_archivo_individual = f"{nombre}.jpg"
+        # 💾 GUARDAMOS EN LA NUEVA CARPETA TARGET_FOLDER
+        plt.savefig(target_folder / nombre_archivo_individual, dpi=150)
         plt.close(fig_temp)
 
     # ----- Volvemos a la figura conjunta (promedio) -----
@@ -344,8 +349,9 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
-    nombre_archivo_conjunto = f"curva_ganancia_conjunta_{meses_archivo_str}.jpg"
-    plt.savefig(curvas_dir / nombre_archivo_conjunto, dpi=300)
+    nombre_archivo_conjunto = f"curva_ganancia_conjunta.jpg"
+    # 💾 GUARDAMOS EN LA NUEVA CARPETA TARGET_FOLDER
+    plt.savefig(target_folder / nombre_archivo_conjunto, dpi=300)
     plt.close()
 
     # Salida normalizada
@@ -401,7 +407,8 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
         nuevos.to_csv(resumen_path, index=False)
 
     print(f"\n✅ CSV resumen actualizado: {resumen_path}")
-    print(f"✅ Gráficos guardados en: {curvas_dir}")
+    # Actualizamos el print final para indicar la carpeta correcta
+    print(f"✅ Gráficos guardados en: {target_folder}")
 
     return y_predicciones, curvas, mejores_cortes_normalizado
 
