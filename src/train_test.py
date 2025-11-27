@@ -416,13 +416,11 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
 
 def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
                                  experimento_key: str,
-                                 folder_name: str = None):
+                                 folder_name: str = None,
+                                 resumen_csv_name: str = "resumen_ganancias.csv"):
     """
     Genera la curva de ganancia de un ENSAMBLE SOFT (Promedio de probabilidades).
-    1. Predice con todos los modelos.
-    2. Promedia las probabilidades por registro.
-    3. Ordena por esa probabilidad promedio.
-    4. Calcula y grafica la curva de ganancia resultante.
+    Guarda métricas en DuckDB/CSV y genera gráfico.
     """
 
     piso_envios = 4000
@@ -462,6 +460,7 @@ def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
             feature_names = model.feature_name()
 
             # Reindex seguro (rellena con 0 si faltan columnas)
+            # Esto evita el error si excluiste columnas en el config nuevo
             Xif_filtered = Xif.reindex(columns=feature_names, fill_value=0)
 
             y_pred = model.predict(Xif_filtered)
@@ -474,23 +473,19 @@ def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
         raise RuntimeError("No se pudieron generar predicciones.")
 
     # ----- 2. Promedio de Probabilidades (Soft Voting) -----
-    # Stackeamos para tener matriz (n_modelos, n_registros) y promediamos por columna (axis=0)
     y_preds_matrix = np.vstack(list_y_preds)
     y_ensamble_prob = np.mean(y_preds_matrix, axis=0)
 
     # ----- 3. Cálculo de Ganancia del Ensamble -----
-    # Vector de ganancia individual real (Ground Truth)
     ganancia_real = np.where(y_test_class == "BAJA+2", config.GANANCIA_ACIERTO, 0) - \
                     np.where(y_test_class != "BAJA+2", config.COSTO_ESTIMULO, 0)
 
-    # Ordenamos por la probabilidad del ensamble (descendente)
+    # Ordenamos por la probabilidad del ensamble
     idx_sorted = np.argsort(y_ensamble_prob)[::-1]
     ganancia_ordenada = ganancia_real[idx_sorted]
 
-    # Acumulada
     ganancia_acumulada = np.cumsum(ganancia_ordenada)
 
-    # Recorte para el gráfico
     curva_segmento = ganancia_acumulada[piso_envios:techo_envios]
     x_envios = np.arange(piso_envios, piso_envios + len(curva_segmento))
 
@@ -499,7 +494,7 @@ def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
     k_mejor = int(piso_envios + idx_max)
     ganancia_max = float(curva_segmento[idx_max])
 
-    # Umbral de corte del ensamble en el punto óptimo
+    # Umbral de corte del ensamble
     thr_opt = float(y_ensamble_prob[idx_sorted][k_mejor - 1])
 
     logger.info(f"Ensamble Soft -> Ganancia Máx: {ganancia_max:,.0f} en {k_mejor} envíos. Thr: {thr_opt:.4f}")
@@ -507,13 +502,11 @@ def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
     # ----- 5. Graficar -----
     plt.figure(figsize=(10, 6))
 
-    # Ploteamos la curva
     plt.plot(x_envios, curva_segmento,
              label=f'Ensamble Soft ({len(model_files)} modelos)',
              color=COLOR_ENSAMBLE,
              linewidth=LINEWIDTH)
 
-    # Línea vertical del óptimo
     plt.axvline(x=k_mejor, color=COLOR_ENSAMBLE, linestyle='--', label=f'Corte Opt: {k_mejor}')
 
     plt.title(f'Curva de Ganancia - Ensamble Soft Voting\nMeses: {meses_titulo} - Exp: {experimento_key}', fontsize=12)
@@ -523,23 +516,74 @@ def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
-    # Guardado
-    # Si viene el folder_name (ej: 202105_202107_nombre_exp), lo usamos
+    # Guardado de Imagen
     if folder_name:
         out_dir = dir_model_opt / "curvas_de_complejidad" / folder_name
     else:
         out_dir = dir_model_opt / "curvas_de_complejidad"
 
     out_dir.mkdir(parents=True, exist_ok=True)
-
     filename = f"curva_ensamble_soft_{experimento_key}.jpg"
     plt.savefig(out_dir / filename, dpi=300)
     plt.close()
 
     print(f"✅ Gráfico de Ensamble Soft guardado en: {out_dir / filename}")
 
-    return k_mejor, ganancia_max, thr_opt
+    # ----- 6. GUARDAR MÉTRICAS EN DUCKDB/CSV -----
 
+    resumen_rows = [{
+        "experimento": experimento_key,
+        "modelo": "ENSAMBLE_SOFT_VOTING",
+        "k_opt": int(k_mejor),
+        "ganancia_max": float(ganancia_max),
+        "thr_opt": float(thr_opt),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }]
+
+    nuevos = pd.DataFrame(resumen_rows)
+    resumen_path = dir_model_opt / resumen_csv_name
+
+    # Lógica de DuckDB idéntica a calculo_curvas_ganancia
+    try:
+        with duckdb.connect(str(config.DB_MODELS_TRAIN_PATH)) as con:
+            con.execute("CREATE OR REPLACE TEMP VIEW nuevos_data AS SELECT * FROM nuevos;")
+            TABLE_NAME = _resumen_table_name(resumen_csv_name)
+            try:
+                con.execute(f"CREATE TABLE IF NOT EXISTS {TABLE_NAME} AS SELECT * FROM nuevos_data WHERE 1=0;")
+                q_alter = f'ALTER TABLE {TABLE_NAME} ADD PRIMARY KEY (experimento, modelo);'
+                con.sql(q_alter)
+            except Exception as e:
+                pass
+
+            current_timestamp = datetime.now().strftime("'%Y-%m-%d %H:%M:%S'")
+            con.execute(f"""
+                MERGE INTO {TABLE_NAME} AS t
+                USING nuevos_data AS s
+                ON t.experimento = s.experimento AND t.modelo = s.modelo
+                WHEN MATCHED THEN
+                    UPDATE SET 
+                        ganancia_max = s.ganancia_max,
+                        k_opt = s.k_opt,
+                        thr_opt = s.thr_opt,
+                        timestamp = {current_timestamp}
+                WHEN NOT MATCHED THEN
+                    INSERT *;
+            """)
+    except Exception as e:
+        logger.error(f"Error general en la operación de DuckDB para Ensamble Soft: {e}")
+
+    # Actualizar CSV local
+    if resumen_path.exists():
+        prev = pd.read_csv(resumen_path)
+        merged = pd.concat([prev, nuevos], ignore_index=True)
+        merged.drop_duplicates(subset=["experimento", "modelo"], keep="last", inplace=True)
+        merged.to_csv(resumen_path, index=False)
+    else:
+        nuevos.to_csv(resumen_path, index=False)
+
+    print(f"✅ Métricas de Ensamble Soft guardadas en: {resumen_path}")
+
+    return k_mejor, ganancia_max, thr_opt
 
 
 def pred_ensamble_modelos(
