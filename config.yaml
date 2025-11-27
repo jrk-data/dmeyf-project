@@ -1,6 +1,6 @@
 # --- CONTROLADOR PRINCIPAL ---
 # Aexperimento que se va a correr
-EXPERIMENT_FILE: "experiments/corrida_03_sin_prestamos.yaml"
+EXPERIMENT_FILE: "experiments/corrida_04.yaml"
 
 # --- INFRAESTRUCTURA (No cambia entre experimentos) ---
 # General

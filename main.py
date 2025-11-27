@@ -374,13 +374,13 @@ def main():
                 logger.info("Calculando curvas de ganancia...")
                 models_dir_mes = Path(models_root) / config.STUDY_NAME_OPTUNA / config.CONSOLIDATED_PATH
 
-                # calculo_curvas_ganancia(
-                #     Xif=FULL_SPLIT['X_test_pl'].to_pandas(),
-                #     y_test_class=FULL_SPLIT['y_test_class'],
-                #     dir_model_opt=str(models_dir_mes),
-                #     experimento_key=study.study_name,
-                #     resumen_csv_name="resumen_ganancias.csv",
-                # )
+                calculo_curvas_ganancia(
+                    Xif=FULL_SPLIT['X_test_pl'].to_pandas(),
+                    y_test_class=FULL_SPLIT['y_test_class'],
+                    dir_model_opt=str(models_dir_mes),
+                    experimento_key=study.study_name,
+                    resumen_csv_name="resumen_ganancias.csv",
+                )
                 # Esta función promedia primero las probabilidades por registros y luego hace el ensamble y grafica la curva
                 graficar_curva_ensamble_soft(
                     Xif=FULL_SPLIT['X_test_pl'].to_pandas(),
