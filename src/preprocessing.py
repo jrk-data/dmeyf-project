@@ -155,7 +155,11 @@ def split_train_data(
     if SUB_SAMPLE is not None:
         train_data = _undersampling_efficient(train_data, SUB_SAMPLE, semilla)  # <--- Lógica Hash Modulo
 
-    columns_drop = ["clase_ternaria", "clase_peso","clase_binaria", "clase_binaria1", "clase_binaria2",'weight', 'class_weight']
+    base_drop = ["clase_ternaria", "clase_peso","clase_binaria", "clase_binaria1", "clase_binaria2",'weight', 'class_weight']
+
+    # Se concatenan las columnas a excluir
+    columns_drop = base_drop + config.COLUMNAS_EXCLUIR
+
     logger.info(f"Dropeando (si existen): {columns_drop}")
 
     try:
