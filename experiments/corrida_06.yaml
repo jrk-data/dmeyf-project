@@ -1,0 +1,158 @@
+CARGAR_HISTORIA_COMPLETA: true
+CONSOLIDATED_PATH: 'CONSOLIDATED' # se usa para guardar carpetas con meses por mes
+# Flags de control de flujo
+flags:
+  # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
+  NUEVA_BASE: false
+  START_POINT: "TRAIN"        # o "PREDICT" según etapa
+  RUN_OPTIMIZATION: true       # corre optuna si faltan trials
+  RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
+  TOP_K_MODEL: 8
+
+experiment:
+  STUDY_NAME_OPTUNA: "c03_semillerio_US_02porciento_desde_202001"
+  #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
+  # Meses de entrenamiento (los que vas a correr en este job)
+  # IMPORTANTE --> Agregar el mes de testeo también en train
+  # aunque se agregue acá la validación, el código después lo separa
+  MONTH_TRAIN: [
+    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
+    202101, 202102, 202103  ]
+  #MONTH_TRAIN: [202102,202103]
+  MONTH_VALIDATION: [202105]
+  #MONTH_VALIDATION: [202103]
+  MONTH_TEST: [202105]
+  MONTH_PRED: [202107]
+  MESES_JUNTOS: True
+
+  # Mes(es) a predecir para cada escenario de negocio
+  PREDICT_SCENARIOS:
+    - name: "prediccion_mayo"
+      pred_month: 202105
+      train_for_pred:
+        - use_experiments_from: [ "CONSOLIDATED" ] # <--- Usa los modelos entrenados en el paso 1
+
+    - name: "prediccion_junio"
+      pred_month: 202106
+      train_for_pred:
+        - use_experiments_from: [ "CONSOLIDATED" ]
+
+    - name: "prediccion_julio"
+      pred_month: 202107
+      train_for_pred:
+        - use_experiments_from: [ "CONSOLIDATED" ]
+          
+optimization:
+  # --- Configuración del Experimento ---
+  STUDY_NAME_OPTUNA: 'c03_semillerio_US_02porciento_desde_202001'
+  #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
+  N_EXPERIMENTS: 3        # Semillerío: Número de modelos con semillas distintas
+  SEMILLERIO: 100          # Número de predicciones a promediar por experimento (Tu código original usaba la longitud de 'semillas')
+  N_TRIALS: 20                                  # 20 warmup + 30 bayesianos
+  N_STARTUP_TRIALS: 20
+  NFOLD: 5
+  EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
+  N_BOOSTS: 1000
+  # Numero de modelos que agarro de la optimizacion hiperparámetros para entrenar
+  TOP_K_MODEL: 8
+
+  # --- Parámetros Buscables (Se exploran en Optuna) ---
+  searchable_params:
+    num_leaves:
+      type: integer
+      lower: 2
+      upper: 100
+    learning_rate:
+      type: float
+      lower: 0.009
+      upper: 0.5
+      log: true
+    min_data_in_leaf:
+      type: integer
+      lower: 20
+      upper: 1000
+    feature_fraction:
+      type: float
+      lower: 0.05
+      upper: 1.0
+    bagging_freq:
+      type: integer
+      lower: 0
+      upper: 5
+    neg_bagging_fraction:
+      type: float
+      lower: 0.01
+      upper: 1.0
+    pos_bagging_fraction:
+      type: float
+      lower: 0.01
+      upper: 1.0
+
+  # --- Parámetros Fijos de LightGBM ---
+  fixed_params:
+    objective: binary
+    verbosity: -1
+    metric: None
+    boosting_type: gbdt
+    max_bin: 31
+    boost_from_average: TRUE
+    feature_pre_filter: FALSE
+    force_row_wise: TRUE
+    extra_trees: TRUE
+    # AGREGAMOS EL MÁXIMO DE RONDAS
+    num_boost_round: 1000 # <-- Máximo de iteraciones para que el ES lo detenga
+
+preprocessing:
+  SUB_SAMPLE: 0.02
+  NUN_WINDOW_LOAD: 2
+  NUN_WINDOW: 2
+  #COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
+  #                   'mprestamos_personales','cprestamos_personales']
+  #  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales','Master_Finiciomora',
+  #'Master_Fvencimiento','Visa_Finiciomora']
+  COLUMNAS_EXCLUIR: []
+  #COLUMNAS_EXCLUIR: [ ]
+  PSI_2021_FEATURES: [ 'Master_Fvencimiento',
+                       'Master_fultimo_cierre',
+                       'Master_mfinanciacion_limite',
+                       'Master_mlimitecompra',
+                       'Master_mpagado',
+                       'Visa_fultimo_cierre',
+                       'Visa_mfinanciacion_limite',
+                       'Visa_mlimitecompra',
+                       'Visa_mpagado',
+                       'cpayroll_trx',
+                       'mpayroll',
+                       'q_producto_master',
+                       'q_producto_visa' ]
+
+seeds:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  SEED: 51123478 # SEED para fijar randomizaciones
+
+
+
+competencia03:
+
+  MONTHS_DROP_LOAD : [201905, 201910, 202006]
+  BQ_PROJECT: "dmecoyfin-250928192534125"
+  BQ_DATASET: "dmeyf"
+  BQ_TABLE: "c03"
+  BQ_TABLE_TARGETS: "targets"
+  BQ_TABLE_FEATURES: "c03_features"
+  BQ_TABLE_FEATURES_HISTORICAL: "c03_features_historical"
+
+  TARGET: "clase_ternaria_binaria"           # ajustá al nombre real en tu CSV
+  ID_COL: "numero_de_cliente"
+
+
+
+competencia01:
+
+  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
+  ID_COL: "numero_de_cliente"
+
+  # negocio (por si luego cambias a métrica custom de ganancia)
+  GANANCIA_ACIERTO: 780000
+  COSTO_ESTIMULO: 20000
+
