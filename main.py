@@ -363,7 +363,7 @@ def main():
                 weights=FULL_SPLIT['w_train'],
                 k=top_k_model,
                 base_study_name=config.STUDY_NAME_OPTUNA,
-                mes="CONSOLIDATED",
+                mes= config.CONSOLIDATED_PATH, # Se usa para guardar carpeta de mes con modelos
                 save_root=models_root,
                 seeds=semillas_final_train,
                 logger=logger,
