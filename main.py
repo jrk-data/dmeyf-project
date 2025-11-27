@@ -59,7 +59,7 @@ from src.features import (
 from src.optimization import (run_study)
 from src.create_seeds import create_seed
 from src.preprocessing import split_train_data, create_binary_target_column
-from src.train_test import train_model, calculo_curvas_ganancia, pred_ensamble_modelos, pred_ensamble_desde_experimentos
+from src.train_test import train_model, calculo_curvas_ganancia, graficar_curva_ensamble_soft,pred_ensamble_modelos, pred_ensamble_desde_experimentos
 from src.predict import prepare_prediction_dataframe
 from src.feature_selection import perform_canaritos_selection  # <--- IMPORTANTE: Nuevo módulo
 from google.cloud import bigquery
@@ -374,7 +374,15 @@ def main():
                 logger.info("Calculando curvas de ganancia...")
                 models_dir_mes = Path(models_root) / config.STUDY_NAME_OPTUNA / config.CONSOLIDATED_PATH
 
-                calculo_curvas_ganancia(
+                # calculo_curvas_ganancia(
+                #     Xif=FULL_SPLIT['X_test_pl'].to_pandas(),
+                #     y_test_class=FULL_SPLIT['y_test_class'],
+                #     dir_model_opt=str(models_dir_mes),
+                #     experimento_key=study.study_name,
+                #     resumen_csv_name="resumen_ganancias.csv",
+                # )
+                # Esta función promedia primero las probabilidades por registros y luego hace el ensamble y grafica la curva
+                graficar_curva_ensamble_soft(
                     Xif=FULL_SPLIT['X_test_pl'].to_pandas(),
                     y_test_class=FULL_SPLIT['y_test_class'],
                     dir_model_opt=str(models_dir_mes),

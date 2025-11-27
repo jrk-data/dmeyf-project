@@ -413,6 +413,135 @@ def calculo_curvas_ganancia(Xif, y_test_class, dir_model_opt,
 
     return y_predicciones, curvas, mejores_cortes_normalizado
 
+
+def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
+                                 experimento_key: str,
+                                 folder_name: str = None):
+    """
+    Genera la curva de ganancia de un ENSAMBLE SOFT (Promedio de probabilidades).
+    1. Predice con todos los modelos.
+    2. Promedia las probabilidades por registro.
+    3. Ordena por esa probabilidad promedio.
+    4. Calcula y grafica la curva de ganancia resultante.
+    """
+
+    piso_envios = 4000
+    techo_envios = 20000
+
+    # Configuración visual
+    LINEWIDTH = 2.0
+    COLOR_ENSAMBLE = 'green'
+
+    # ----- Preparación de Datos -----
+    if isinstance(Xif, pl.DataFrame):
+        Xif = Xif.to_pandas()
+    Xif = _coerce_object_cols(Xif)
+
+    # Detectar meses para el título
+    meses_titulo = "Desconocido"
+    if 'foto_mes' in Xif.columns:
+        meses_unicos = sorted(Xif['foto_mes'].unique())
+        meses_titulo = ", ".join([str(m) for m in meses_unicos])
+
+    # ----- Carga de Modelos -----
+    dir_model_opt = Path(dir_model_opt)
+    model_files = sorted([p for p in dir_model_opt.glob("*.txt")] + [p for p in dir_model_opt.glob("*.bin")])
+
+    if not model_files:
+        raise RuntimeError(f"No hay modelos en {dir_model_opt}")
+
+    # ----- 1. Recolección de Probabilidades -----
+    logger.info(f"Calculando probabilidades para Ensamble Soft con {len(model_files)} modelos...")
+    list_y_preds = []
+
+    for model_file in model_files:
+        if not model_file.exists() or model_file.stat().st_size == 0:
+            continue
+        try:
+            model = lgb.Booster(model_file=str(model_file))
+            feature_names = model.feature_name()
+
+            # Reindex seguro (rellena con 0 si faltan columnas)
+            Xif_filtered = Xif.reindex(columns=feature_names, fill_value=0)
+
+            y_pred = model.predict(Xif_filtered)
+            list_y_preds.append(y_pred)
+
+        except Exception as e:
+            logger.warning(f"Error cargando modelo {model_file.name}: {e}")
+
+    if not list_y_preds:
+        raise RuntimeError("No se pudieron generar predicciones.")
+
+    # ----- 2. Promedio de Probabilidades (Soft Voting) -----
+    # Stackeamos para tener matriz (n_modelos, n_registros) y promediamos por columna (axis=0)
+    y_preds_matrix = np.vstack(list_y_preds)
+    y_ensamble_prob = np.mean(y_preds_matrix, axis=0)
+
+    # ----- 3. Cálculo de Ganancia del Ensamble -----
+    # Vector de ganancia individual real (Ground Truth)
+    ganancia_real = np.where(y_test_class == "BAJA+2", config.GANANCIA_ACIERTO, 0) - \
+                    np.where(y_test_class != "BAJA+2", config.COSTO_ESTIMULO, 0)
+
+    # Ordenamos por la probabilidad del ensamble (descendente)
+    idx_sorted = np.argsort(y_ensamble_prob)[::-1]
+    ganancia_ordenada = ganancia_real[idx_sorted]
+
+    # Acumulada
+    ganancia_acumulada = np.cumsum(ganancia_ordenada)
+
+    # Recorte para el gráfico
+    curva_segmento = ganancia_acumulada[piso_envios:techo_envios]
+    x_envios = np.arange(piso_envios, piso_envios + len(curva_segmento))
+
+    # ----- 4. Métricas del Ensamble -----
+    idx_max = np.argmax(curva_segmento)
+    k_mejor = int(piso_envios + idx_max)
+    ganancia_max = float(curva_segmento[idx_max])
+
+    # Umbral de corte del ensamble en el punto óptimo
+    thr_opt = float(y_ensamble_prob[idx_sorted][k_mejor - 1])
+
+    logger.info(f"Ensamble Soft -> Ganancia Máx: {ganancia_max:,.0f} en {k_mejor} envíos. Thr: {thr_opt:.4f}")
+
+    # ----- 5. Graficar -----
+    plt.figure(figsize=(10, 6))
+
+    # Ploteamos la curva
+    plt.plot(x_envios, curva_segmento,
+             label=f'Ensamble Soft ({len(model_files)} modelos)',
+             color=COLOR_ENSAMBLE,
+             linewidth=LINEWIDTH)
+
+    # Línea vertical del óptimo
+    plt.axvline(x=k_mejor, color=COLOR_ENSAMBLE, linestyle='--', label=f'Corte Opt: {k_mejor}')
+
+    plt.title(f'Curva de Ganancia - Ensamble Soft Voting\nMeses: {meses_titulo} - Exp: {experimento_key}', fontsize=12)
+    plt.xlabel('Cantidad de envíos (Rank)', fontsize=12)
+    plt.ylabel('Ganancia acumulada', fontsize=12)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    # Guardado
+    # Si viene el folder_name (ej: 202105_202107_nombre_exp), lo usamos
+    if folder_name:
+        out_dir = dir_model_opt / "curvas_de_complejidad" / folder_name
+    else:
+        out_dir = dir_model_opt / "curvas_de_complejidad"
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"curva_ensamble_soft_{experimento_key}.jpg"
+    plt.savefig(out_dir / filename, dpi=300)
+    plt.close()
+
+    print(f"✅ Gráfico de Ensamble Soft guardado en: {out_dir / filename}")
+
+    return k_mejor, ganancia_max, thr_opt
+
+
+
 def pred_ensamble_modelos(
     Xif: pd.DataFrame,
     dir_model_opt: str | Path,   # p.ej. ".../src/models/STUDY_NAME_OPTUNA_202003"
