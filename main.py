@@ -372,7 +372,7 @@ def main():
             # 2. CURVAS
             if config.RUN_CALC_CURVAS:
                 logger.info("Calculando curvas de ganancia...")
-                models_dir_mes = Path(models_root) / config.STUDY_NAME_OPTUNA / "CONSOLIDATED"
+                models_dir_mes = Path(models_root) / config.STUDY_NAME_OPTUNA / config.CONSOLIDATED_PATH
 
                 calculo_curvas_ganancia(
                     Xif=FULL_SPLIT['X_test_pl'].to_pandas(),

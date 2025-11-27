@@ -61,6 +61,8 @@ try:
 
     MESES_JUNTOS = exp.get("MESES_JUNTOS", False)
 
+    CONSOLIDATED_PATH = _cfgGeneral.get("CONSOLIDATED_PATH", "CONSOLIDATED")
+
     # ---- Optimization ----
     N_TRIALS = int(opt.get("N_TRIALS", 50))
     N_STARTUP_TRIALS = int(opt.get("N_STARTUP_TRIALS", 20))
