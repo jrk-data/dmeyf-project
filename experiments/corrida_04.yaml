@@ -7,7 +7,7 @@ flags:
   START_POINT: "TRAIN"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: false       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
-  TOP_K_MODEL: 5
+  TOP_K_MODEL: 8
 
 experiment:
   STUDY_NAME_OPTUNA: "c03_consolidado_US_10porciento_hasta_febrero_2021"
