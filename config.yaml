@@ -1,6 +1,8 @@
-#STUDY_NAME_OPTUNA: "no-name-58aad351-e6cd-4a0f-aa54-2821f1033b79"
-#STORAGE_OPTUNA: "sqlite:///optimizations/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
+# --- CONTROLADOR PRINCIPAL ---
+# Aexperimento que se va a correr
+EXPERIMENT_FILE: "experiments/corrida_03_sin_prestamos.yaml"
 
+# --- INFRAESTRUCTURA (No cambia entre experimentos) ---
 # General
 DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
 DATA_PATH_C03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"

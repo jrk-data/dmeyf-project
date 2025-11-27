@@ -5,29 +5,43 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-
-
-#BASE = Path(__file__).resolve().parents[1]
-
-# DB_PATH = BASE / "data" / "churn.duckdb"
-# CSV_COMP = (BASE / "data" / "competencia_01_crudo.csv").as_posix()
-#CSV_DIC  = (BASE / "data" / "DiccionarioDatos_2025 - Diccionario.csv").as_posix()
-
-
-# Ruta del archivo de configuracion (al nivel raíz del proyecto)
-PATH_CONFIG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
+# Rutas base
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # Raíz del proyecto
+PATH_CONFIG_GLOBAL = os.path.join(BASE_DIR, "config.yaml")
 
 try:
-    with open(PATH_CONFIG, "r", encoding="utf-8") as f:
-        _cfgGeneral = yaml.safe_load(f)
-        _cfg = _cfgGeneral["competencia01"]
-        _cfg3 = _cfgGeneral["competencia03"]
-        exp = _cfgGeneral["experiment"]
-        bq = _cfgGeneral["bigquery"]
-        opt = _cfgGeneral["optimization"]
-        flag = _cfgGeneral["flags"]
-        pr = _cfgGeneral["preprocessing"]
-        seeds = _cfgGeneral["seeds"]
+    # 1. Cargar Configuración Global (Infraestructura)
+    with open(PATH_CONFIG_GLOBAL, "r", encoding="utf-8") as f:
+        _cfgGlobal = yaml.safe_load(f)
+
+    # 2. Detectar qué experimento correr
+    exp_file_rel_path = _cfgGlobal.get("EXPERIMENT_FILE")
+    if not exp_file_rel_path:
+        raise ValueError("El archivo config.yaml no tiene definida la variable 'EXPERIMENT_FILE'")
+
+    path_experiment = os.path.join(BASE_DIR, exp_file_rel_path)
+    logger.info(f"🔄 Cargando configuración del experimento: {exp_file_rel_path}")
+
+    # 3. Cargar Configuración del Experimento
+    with open(path_experiment, "r", encoding="utf-8") as f:
+        _cfgExp = yaml.safe_load(f)
+
+    # 4. Fusionar diccionarios (El experimento extiende a la global)
+    # Creamos un diccionario unificado
+    _cfgGeneral = _cfgGlobal.copy()
+    _cfgGeneral.update(_cfgExp)
+
+    # --- A PARTIR DE ACÁ TU CÓDIGO SIGUE IGUAL ---
+    # Ya que _cfgGeneral ahora tiene TODAS las claves (las de config.yaml y las de exp_XX.yaml)
+
+    _cfg = _cfgGeneral.get("competencia01", {})  # Usa .get para evitar error si no está definido
+    _cfg3 = _cfgGeneral["competencia03"]
+    exp = _cfgGeneral["experiment"]
+    bq = _cfgGeneral["bigquery"]
+    opt = _cfgGeneral["optimization"]
+    flag = _cfgGeneral["flags"]
+    pr = _cfgGeneral["preprocessing"]
+    seeds = _cfgGeneral["seeds"]
 
     # DATA CRUDA
     DATA_PATH_C02 = _cfgGeneral.get("DATA_PATH_C02", "data/competencia_01.csv")
