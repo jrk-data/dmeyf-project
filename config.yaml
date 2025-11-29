@@ -167,36 +167,3 @@ flags:
   RUN_OPTIMIZATION: false       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 5
-
-#experiment:
-#  STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
-#  #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
-#  # Meses de entrenamiento (los que vas a correr en este job)
-#  # IMPORTANTE --> Agregar el mes de testeo también en train
-#  # aunque se agregue acá la validación, el código después lo separa
-#  MONTH_TRAIN: [
-#    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
-#    202101, 202102, 202103  ]
-#  #MONTH_TRAIN: [202102,202103]
-#  MONTH_VALIDATION: [202106]
-#  #MONTH_VALIDATION: [202103]
-#  MONTH_TEST: [202105]
-#  MONTH_PRED: [202107]
-#  MESES_JUNTOS: True
-#
-#  # Mes(es) a predecir para cada escenario de negocio
-#  PREDICT_SCENARIOS:
-#    - name: "prediccion_mayo"
-#      pred_month: 202105
-#      train_for_pred:
-#        - use_experiments_from: [ "CONSOLIDATED" ] # <--- Usa los modelos entrenados en el paso 1
-#
-#    - name: "prediccion_junio"
-#      pred_month: 202106
-#      train_for_pred:
-#        - use_experiments_from: [ "CONSOLIDATED" ]
-#
-#    - name: "prediccion_julio"
-#      pred_month: 202107
-#      train_for_pred:
-#        - use_experiments_from: [ "CONSOLIDATED" ]
