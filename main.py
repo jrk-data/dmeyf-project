@@ -387,7 +387,7 @@ def main():
                     y_test_class=FULL_SPLIT['y_test_class'],
                     dir_model_opt=str(models_dir_mes),
                     experimento_key=study.study_name,
-                    resumen_csv_name="resumen_ganancias.csv",
+                    resumen_csv_name=f"resumen_ganancias_{config.MES_VALIDACION[0]}.csv",
                 )
 
         # ---------------------------------------------------------------------------------
