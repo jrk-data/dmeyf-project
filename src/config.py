@@ -126,13 +126,38 @@ def setup_environment(is_vm_environment):
     Función que recibe un booleano y ejecuta el IF/ELSE
     correspondiente.
     """
-    global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH, PATH_FEATURES_SELECTION
+    global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH
 
     if is_vm_environment:
         paths = _cfgGeneral["vm"]
     else:
         paths = _cfgGeneral["local"]
-    # Defino los paths
+
+    # Defino los paths base
+    DB_PATH = paths.get("DB_PATH", "data/churn.duckdb")
+    LOGS_PATH = paths.get("LOGS_PATH", "logs/")
+    OUTPUT_PATH = paths.get("OUTPUT_PATH", "output/")
+    STORAGE_OPTUNA = paths.get("STORAGE_OPTUNA", None)
+
+    # --- Capturo la ruta de los modelos ---
+    base_dir_models = paths.get("DIR_MODELS", "src/models/default/")
+
+    # 1. Recuperamos los meses de train directamente del YAML crudo
+    #    (porque la variable global MES_TRAIN a veces no está disponible en este scope)
+    raw_train_months = _cfgGeneral["experiment"].get("MONTH_TRAIN", [])
+
+    # 2. Obtenemos el último mes (si existe lista)
+    if raw_train_months:
+        ultimo_mes = raw_train_months[-1]
+        suffix = f"meses_entrenados_hasta_{ultimo_mes}"
+    else:
+        suffix = "sin_meses_definidos"
+
+    # 3. Usamos os.path.join para evitar errores con las barras '/' (Windows vs Linux)
+    #    Esto une: "src/models/" + "meses_entrenados_hasta_202103" -> "src/models/meses_entrenados_hasta_202103"
+    DIR_MODELS = os.path.join(base_dir_models, suffix)
+    # ----------------------------
+
     DB_PATH = paths.get("DB_PATH", "data/churn.duckdb")
     LOGS_PATH = paths.get("LOGS_PATH", "logs/")
     OUTPUT_PATH = paths.get("OUTPUT_PATH", "output/")
