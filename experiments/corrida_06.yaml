@@ -1,11 +1,11 @@
-CARGAR_HISTORIA_COMPLETA: true
+CARGAR_HISTORIA_COMPLETA: false
 CONSOLIDATED_PATH: 'CONSOLIDATED' # se usa para guardar carpetas con meses por mes
 # Flags de control de flujo
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
   NUEVA_BASE: false
   START_POINT: "TRAIN"        # o "PREDICT" según etapa
-  RUN_OPTIMIZATION: true       # corre optuna si faltan trials
+  RUN_OPTIMIZATION: false       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 8
 
