@@ -523,7 +523,7 @@ def graficar_curva_ensamble_soft(Xif, y_test_class, dir_model_opt,
         out_dir = dir_model_opt / "curvas_de_complejidad"
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"curva_ensamble_soft_{experimento_key}_{config.MES_VALIDACION[0]}"
+    filename = f"curva_ensamble_soft_{experimento_key}_{config.MES_VALIDACION[0]}_train_{config.MES_TRAIN[-1]}"
     plt.savefig(out_dir / filename, dpi=300)
     plt.close()
 
