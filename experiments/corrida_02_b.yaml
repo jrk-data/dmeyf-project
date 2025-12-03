@@ -8,6 +8,7 @@ flags:
   RUN_OPTIMIZATION: false       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 8
+  SELECTED_RANKS: [4, 6]
 
 experiment:
   STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
@@ -24,6 +25,8 @@ experiment:
   MONTH_TEST: [202107]
   MONTH_PRED: [202109]
   MESES_JUNTOS: True
+
+  K_ENVIO_PRED: 10500
 
   # Mes(es) a predecir para cada escenario de negocio
   PREDICT_SCENARIOS:

@@ -83,6 +83,7 @@ try:
     RUN_CALC_CURVAS = flag.get("RUN_CALC_CURVAS", False)
     TOP_K_MODEL = flag.get("TOP_K_MODEL", 5)
 
+    SELECTED_RANKS = flag.get("SELECTED_RANKS", [])
 
 
 
@@ -94,6 +95,9 @@ try:
     MES_VALIDACION = exp.get("MONTH_VALIDATION", [202103])
     MES_TEST = exp.get("MONTH_TEST", [202104])
     MES_PRED = exp.get("MONTH_PRED", [202106])
+
+    K_ENVIO_PRED: exp.get("K_ENVIO_PRED", 20000)
+
     TARGET = _cfg3.get("TARGET", "target")
     ID_COL = _cfg3.get("ID_COL", "id")
 

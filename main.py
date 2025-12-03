@@ -352,6 +352,12 @@ def main():
 
             study = studies_by_month.get("CONSOLIDATED")
             top_k_model = config.TOP_K_MODEL
+
+            selected_ranks = getattr(config, 'SELECTED_RANKS', [])
+            if selected_ranks:
+                logger.info(f"⚠️ MODO MANUAL: Se usarán SOLO los modelos Rank: {selected_ranks}")
+
+
             semillas_final_train = config.SEEDS
             models_root = config.DIR_MODELS
 
@@ -367,6 +373,7 @@ def main():
                 save_root=models_root,
                 seeds=semillas_final_train,
                 logger=logger,
+                selected_ranks=selected_ranks
             )
 
             # 2. CURVAS
@@ -380,6 +387,7 @@ def main():
                     dir_model_opt=str(models_dir_mes),
                     experimento_key=study.study_name,
                     resumen_csv_name=f"resumen_ganancias_{config.MES_VALIDACION[0]}_train_{config.MES_TRAIN[-1]}.csv",
+                    selected_ranks=selected_ranks
                 )
                 # Esta función promedia primero las probabilidades por registros y luego hace el ensamble y grafica la curva
                 graficar_curva_ensamble_soft(
@@ -388,6 +396,7 @@ def main():
                     dir_model_opt=str(models_dir_mes),
                     experimento_key=study.study_name,
                     resumen_csv_name=f"resumen_ganancias_{config.MES_VALIDACION[0]}_train_{config.MES_TRAIN[-1]}.csv",
+                    selected_ranks=selected_ranks
                 )
 
         # ---------------------------------------------------------------------------------
@@ -396,7 +405,17 @@ def main():
         if config.START_POINT == 'PREDICT':
             # ... (Lógica de predicción se mantiene igual, usando features guardadas en modelo) ...
             scenarios = getattr(config, "PREDICT_SCENARIOS", [])
+
+            # En caso de haber elegido manualmente los modelos optimizados para predecir
+            selected_ranks = config.SELECTED_RANKS
+
             base_study_name = config.STUDY_NAME_OPTUNA
+
+            # [NUEVO] Leemos el corte de envío. Default 10000 por seguridad
+            cut_off_rank = config.K_ENVIO_PRED
+
+
+            logger.info(f"⚙️ Configuración de predicción: Selected Ranks={selected_ranks}, K_Envios={cut_off_rank}")
 
             if not scenarios:
                 # Caso simple
@@ -423,7 +442,9 @@ def main():
                     experimento=experimento,
                     output_path=config.OUTPUT_PATH,
                     resumen_csv_name="resumen_ganancias.csv",
-                    k=config.TOP_K_MODEL
+                    k=config.TOP_K_MODEL,
+                    selected_ranks=selected_ranks,
+                    cut_off_rank=cut_off_rank
                 )
             else:
                 # Caso con escenarios
@@ -452,7 +473,9 @@ def main():
                         k=config.TOP_K_MODEL,
                         output_path=config.OUTPUT_PATH,
                         output_basename=f"{name}_{pred_month}",
-                        resumen_csv_name="resumen_ganancias.csv"
+                        resumen_csv_name="resumen_ganancias.csv",
+                        selected_ranks=selected_ranks,
+                        cut_off_rank=cut_off_rank
                     )
 
     except Exception as e:
