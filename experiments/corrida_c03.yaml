@@ -8,9 +8,9 @@ CONSOLIDATED_PATH: 'CONSOLIDATED_ENTREGA_FINAL'
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
   NUEVA_BASE: false
-  START_POINT: "TRAIN"        # o "PREDICT" según etapa
+  START_POINT: "PREDICT"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: false       # corre optuna si faltan trials
-  RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
+  RUN_CALC_CURVAS: false        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
   TOP_K_MODEL: 8
   SELECTED_RANKS: []
 
