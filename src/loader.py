@@ -168,7 +168,9 @@ def consolidate_tables_bq(
         job.result()
 
         count_query = f"SELECT count(*) FROM {final_table_ref}"
-        count_result = client.query(count_query).result().next()[0]
+        query_job = client.query(count_query)
+        rows = list(query_job.result())  # Convertimos el iterador a lista
+        count_result = rows[0][0]  # Tomamos el primer valor de la primera fila
 
         logger.info(f"✅ Tablas consolidadas exitosamente en '{final_table_id}'. Total de filas: {count_result:,}")
 
