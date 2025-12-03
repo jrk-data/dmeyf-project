@@ -274,7 +274,7 @@ def select_c02_polars():
     Hace una lectura rápida de los primeors 10 registros del csv para crear el schema y pasarlo luego a BigQuery.
     '''
     # tomo una muestra para obtener schema
-    logger.info("Creando schema para competencia_03...")
+    logger.info("Creando schema para competencia_02...")
     try:
         df = pl.read_csv(
         config.DATA_PATH_C02,
