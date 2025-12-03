@@ -1,5 +1,5 @@
 CARGAR_HISTORIA_COMPLETA: false
-
+CONSOLIDATED_PATH: 'CONSOLIDATED_TOP_4_6'
 # Flags de control de flujo
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
