@@ -8,17 +8,31 @@ Este proyecto implementa un pipeline completo de Ciencia de Datos para la predic
 2.  **Librerías:** Instalar dependencias necesarias (incluyendo el soporte para Google Storage).
     ```bash
     pip install -r requirements.txt
-    pip install gcsfs
     ```
 3.  **Credenciales GCP:** Tener configurado el acceso a Google Cloud (BigQuery y Storage) en el entorno donde se ejecuta (VM o local).
 
 ---
+## Consideraciones Previas
+El proyecto utiliza BigQuery para crear las tablas y llevar a cabo el feature engineering. Para esto es necesario tener la API de BigQuery habilitada. No debería resultar problemático la creación del data set y las tablas corriendo el código en una vm de GCP.
+
+El código realiza la optimización de hiperparámetros en LGBM utilizando Optuna e iterando 100 semillas.
+
+Se seleccionaron todos los registros de target BAJA+1 y BAJA+2 de enero 2020 en adelante. Y se hizo un subsampleo de los registros CONTINUA de un 20%.
+Se descartó el mes de junio de 2020 por considerar que tenía muchos campos problemáticos.
+Se hicieron 20 iteraciones con semillerio de 100.
+
+Luego de la Optimización, y tras algunas pruebas. Se seleccionó el top 8 de modelos con hiperparámetros optimizados,
+a cada uno de los 8 modelos se los entrenó y validó con 5 semillas distintas. Obteniendo así 40 modelos que fueron ensamblados para 
+predecir los targets al mes de septiembre.
+
+--- 
 
 ## ⚙️ Cómo Ejecutar el Proyecto
 
 El proyecto se controla desde un único punto de entrada: **`config.yaml`**.
 
 Para cambiar de etapa (Crear Datos, Optimizar, Entrenar o Predecir), solo debes modificar la variable `EXPERIMENT_FILE` en `config.yaml` apuntando al archivo de configuración específico de esa etapa.
+
 
 ### Paso 1: Configurar el Controlador
 Abre `config.yaml` y edita la línea:
