@@ -1,5 +1,5 @@
 CARGAR_HISTORIA_COMPLETA: false
-CONSOLIDATED_PATH: 'CONSOLIDATED_TOP_4_6'
+CONSOLIDATED_PATH: 'CONSOLIDATED_ENTREGA_FINAL'
 # Flags de control de flujo
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
@@ -18,7 +18,7 @@ experiment:
   # aunque se agregue acá la validación, el código después lo separa
   MONTH_TRAIN: [
     202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
-    202101, 202102, 202103, 202104, 202105  ]
+    202101, 202102, 202103, 202104, 202105, 202106, 202107  ]
   #MONTH_TRAIN: [202102,202103]
   MONTH_VALIDATION: [202107]
   #MONTH_VALIDATION: [202103]
@@ -30,20 +30,11 @@ experiment:
 
   # Mes(es) a predecir para cada escenario de negocio
   PREDICT_SCENARIOS:
-    - name: "prediccion_mayo"
-      pred_month: 202105
+    - name: "prediccion_septiembre"
+      pred_month: 202109
       train_for_pred:
-        - use_experiments_from: [ "CONSOLIDATED" ] # <--- Usa los modelos entrenados en el paso 1
+        - use_experiments_from: [ "CONSOLIDATED_ENTREGA_FINAL" ] # <--- Usa los modelos entrenados en el paso 1
 
-    - name: "prediccion_junio"
-      pred_month: 202106
-      train_for_pred:
-        - use_experiments_from: [ "CONSOLIDATED" ]
-
-    - name: "prediccion_julio"
-      pred_month: 202107
-      train_for_pred:
-        - use_experiments_from: [ "CONSOLIDATED" ]
           
 optimization:
   # --- Configuración del Experimento ---
