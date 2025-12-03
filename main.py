@@ -50,7 +50,7 @@ logger.info(f"STUDY_NAME: {config.STUDY_NAME_OPTUNA}")
 
 # --- Import tardío del resto (evita leer config antes de tiempo) ---
 from src.loader import (load_gcs_to_bigquery_via_duckdb, create_churn_targets_bq, consolidate_tables_bq,
-                        create_bq_table_c03, select_data_c03, tabla_productos_por_cliente
+                        create_bq_table_c02, select_c02_polars, tabla_productos_por_cliente
                         )
 from src.features import (
     create_intra_month_features_bq, create_historical_features_bq,
@@ -93,7 +93,24 @@ def main():
             except Exception as e:
                 logger.warning(f'No se creo el dataset {DATASET_ID} en BigQuery.')
 
-            # Carga C03
+            # Carga DATA C02
+            try:
+                logger.info("--- Iniciando carga de Competencia 02 ---")
+                # 1. Leer CSV con Polars
+                df_c02 = select_c02_polars(config.DATA_PATH_C02)
+
+                # 2. Subir a BigQuery (tabla 'c02')
+                create_bq_table_c02(df_c02, PROJECT_ID, DATASET_ID, "c02")
+
+                # Liberar memoria manualmente
+                del df_c02
+                import gc
+                gc.collect()
+            except Exception as e:
+                logger.error(f"❌ Falló la carga de C02: {e}")
+                raise
+
+            # CARGA DATA C03
             try:
                 load_gcs_to_bigquery_via_duckdb(
                     project_id=PROJECT_ID, dataset_id=DATASET_ID, table_id="ult_mes",

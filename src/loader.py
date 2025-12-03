@@ -268,7 +268,7 @@ def create_churn_targets_bq(
 
 # ################### Lógica para competencia 2 y 3##############################
 
-def select_c03_polars(path_csv_competencia_2):
+def select_c02_polars():
     '''
     Esta función lee el csv de competencia 2 y lo convierte a polars.
     Hace una lectura rápida de los primeors 10 registros del csv para crear el schema y pasarlo luego a BigQuery.
@@ -277,7 +277,7 @@ def select_c03_polars(path_csv_competencia_2):
     logger.info("Creando schema para competencia_03...")
     try:
         df = pl.read_csv(
-        "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz",
+        config.DATA_PATH_C02,
         n_rows=10,
         schema_overrides={"mprestamos_prendarios": pl.Float64},
         infer_schema_length=1000,
@@ -300,7 +300,7 @@ def select_c03_polars(path_csv_competencia_2):
         # Leo todo el csv con el schema que le paso a polars
         df = (
             pl.read_csv(
-                path_csv_competencia_2,
+                config.DATA_PATH_C02,
                 schema_overrides=schema_modificado,
                 infer_schema_length=0  # desactiva inferencia de tipos
             )
@@ -312,7 +312,7 @@ def select_c03_polars(path_csv_competencia_2):
         logger.error(f'Error al leer csv: {e}')
         raise
 
-def create_bq_table_c03(df, PROJECT, DATASET, TABLE):
+def create_bq_table_c02(df, PROJECT, DATASET, TABLE):
     '''
     Esta función crea una tabla en BigQuery a partir de un DataFrame de Polars.
        '''
