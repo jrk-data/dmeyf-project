@@ -95,7 +95,7 @@ try:
     MES_TEST = exp.get("MONTH_TEST", [202104])
     MES_PRED = exp.get("MONTH_PRED", [202106])
 
-    K_ENVIO_PRED: exp.get("K_ENVIO_PRED", 20000)
+    K_ENVIO_PRED = exp.get("K_ENVIO_PRED", 20000)
 
     TARGET = _cfg3.get("TARGET", "target")
     ID_COL = _cfg3.get("ID_COL", "id")
