@@ -45,7 +45,7 @@ def load_gcs_to_bigquery_via_duckdb(
         gcs_file_path: Ruta completa del archivo GCS.
         temp_local_db: Ruta a la base de datos DuckDB. Usa ':memory:' para RAM.
     """
-
+    # Se definen credenciales de google para que se pueda conectar desde la vm a BigQuery usando duckdb
     gcs_bearer_token = _aut_google()
     logger.info(f"Iniciando proceso: GCS ({gcs_file_path}) -> DuckDB -> BigQuery ({dataset_id}.{table_id})")
 
@@ -80,7 +80,15 @@ def load_gcs_to_bigquery_via_duckdb(
 
     # 2. Cargar DataFrame a BigQuery
     try:
+        # Se Intenta crear el Dataset en BigQuery en caso que no exista
+        # 1) Cliente BQ
         client = bigquery.Client(project=project_id)
+
+        # 2) Crear dataset si no existe
+        dataset_ref = bigquery.Dataset(f"{project_id}.{dataset_id}")
+        client.create_dataset(dataset_ref, exists_ok=True)
+        logger.info(f"✅ Dataset '{dataset_id}' verificado/creado.")
+
         table_ref = client.dataset(dataset_id).table(table_id)
 
         # Configuración de carga: escribir sobre la tabla si ya existe
@@ -93,7 +101,7 @@ def load_gcs_to_bigquery_via_duckdb(
             df_duckdb, table_ref, job_config=job_config
         )
 
-        job.result()  # Espera a que el job termine
+        job.result()
 
         logger.info(f"✅ DataFrame cargado exitosamente a BigQuery en la tabla '{table_id}' en el dataset '{dataset_id}'.")
 

@@ -14,6 +14,8 @@ experiment:
   STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
   #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   # Meses de entrenamiento (los que vas a correr en este job)
+
+
   # IMPORTANTE --> Agregar el mes de testeo también en train
   # aunque se agregue acá la validación, el código después lo separa
   MONTH_TRAIN: [

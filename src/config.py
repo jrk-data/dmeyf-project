@@ -33,7 +33,6 @@ try:
     # --- A PARTIR DE ACÁ TU CÓDIGO SIGUE IGUAL ---
     # Ya que _cfgGeneral ahora tiene TODAS las claves (las de config.yaml y las de exp_XX.yaml)
 
-    _cfg = _cfgGeneral.get("competencia01", {})  # Usa .get para evitar error si no está definido
     _cfg3 = _cfgGeneral["competencia03"]
     exp = _cfgGeneral["experiment"]
     bq = _cfgGeneral["bigquery"]
@@ -103,8 +102,8 @@ try:
 
     MONTHS_DROP_LOAD = _cfg3.get("MONTHS_DROP_LOAD", [202006])
 
-    GANANCIA_ACIERTO = _cfg.get("GANANCIA_ACIERTO", None)
-    COSTO_ESTIMULO = _cfg.get("COSTO_ESTIMULO", None)
+    GANANCIA_ACIERTO = _cfg3.get("GANANCIA_ACIERTO", None)
+    COSTO_ESTIMULO = _cfg3.get("COSTO_ESTIMULO", None)
 
 
     # Competencia 03

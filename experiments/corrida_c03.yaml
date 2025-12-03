@@ -1,3 +1,7 @@
+seeds:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  SEED: 51123478 # SEED para fijar randomizaciones
+
 CARGAR_HISTORIA_COMPLETA: false
 CONSOLIDATED_PATH: 'CONSOLIDATED_ENTREGA_FINAL'
 # Flags de control de flujo
@@ -14,14 +18,24 @@ experiment:
   STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
   #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   # Meses de entrenamiento (los que vas a correr en este job)
+
+  # ------- MESES TRAIN PARA OPTIMIZACIÓN DE HIPERPARÁMETROS Y TESTEOS ----------------
+  # --------                  CON 202105, 202107           ----------------
+
+  # MONTH_TRAIN: [  202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012, 202101, 202102, 202103]
+
+
+  # ------- MESES TRAIN PARA HACER EL PREDICT  ----------------
+  # --------      UTILIZANDO 202109           ----------------
   # IMPORTANTE --> Agregar el mes de testeo también en train
   # aunque se agregue acá la validación, el código después lo separa
   MONTH_TRAIN: [
     202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
     202101, 202102, 202103, 202104, 202105, 202106, 202107  ]
-  #MONTH_TRAIN: [202102,202103]
+
+  # SI ESTOY HACIENDO PRED, Y TENGO LAS CURVAS DE GANANCIAS ACTIVADAS
+  # SE VAN A GRAFICAR CURVAS PARA 202107 SUPER OVERFITEADAS - LAS IGNORO
   MONTH_VALIDATION: [202107]
-  #MONTH_VALIDATION: [202103]
   MONTH_TEST: [202107]
   MONTH_PRED: [202109]
   MESES_JUNTOS: True
@@ -120,9 +134,7 @@ preprocessing:
                        'q_producto_master',
                        'q_producto_visa' ]
 
-seeds:
-  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
-  SEED: 51123478 # SEED para fijar randomizaciones
+
 
 
 
@@ -138,15 +150,8 @@ competencia03:
 
   TARGET: "clase_ternaria_binaria"           # ajustá al nombre real en tu CSV
   ID_COL: "numero_de_cliente"
-
-
-
-competencia01:
-
-  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
-  ID_COL: "numero_de_cliente"
-
-  # negocio (por si luego cambias a métrica custom de ganancia)
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
+
+
 
