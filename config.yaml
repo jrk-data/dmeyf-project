@@ -1,70 +1,162 @@
-#STUDY_NAME_OPTUNA: "no-name-58aad351-e6cd-4a0f-aa54-2821f1033b79"
-#STORAGE_OPTUNA: "sqlite:///optimizations/optuna_study.db"   # donde persiste el estudio (sqlite en output/)
+# --- CONTROLADOR PRINCIPAL ---
+# Aexperimento que se va a correr
+EXPERIMENT_FILE: "experiments/corrida_c03.yaml"
 
-# CONFIG Local
-#STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
-#DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
-#DB_PATH: "data/churn.duckdb"
-#DATA_PATH: "data/competencia_01_crudo.csv"
-#DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
-#LOGS_PATH: "logs/"
-NUEVA_BASE: False
+# --- INFRAESTRUCTURA (No cambia entre experimentos) ---
+# General
+DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
+DATA_PATH_C03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
+PATH_FEATURES_SELECTION: "gs://joaquinrk_data_bukito3/datasets/features_selection.txt"
 
+CARGAR_HISTORIA_COMPLETA: false
 
-# Config VM
-STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
-DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"
-DB_PATH: "/home/joaquinrk_data/buckets/b1/datasets/churn.duckdb"
-DATA_PATH: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
-DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/datasets/models_train_test.duckdb"
-CSV_COMP: "/home/joaquinrk_data/buckets/b1/datasets/competencia_01_crudo.csv"
-LOGS_PATH: "/home/joaquinrk_data/buckets/b1/logs/"
+# BIG QUERY DATOS
+bigquery:
+  BQ_PROJECT : "dmecoyfin-250928192534125"                 # p.ej. "dmecoyfin-250928192534125"
+  BQ_DATASET : "dmeyf"
+  BQ_TABLE   : "c03"
+  BQ_TABLE_TARGETS : 'targets'
+  BQ_TABLE_PRODUCTS: 'c03_products'
+
+local:
+  STORAGE_OPTUNA: "sqlite:////home/joacosk/Documents/maestria/Q2/script_project/optimizations/optuna_study.db"
+  DIR_MODELS: "/home/joacosk/Documents/maestria/Q2/script_project/src/models/"
+  DB_PATH: "data/churn.duckdb"
+  DATA_PATH_c02: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
+  DATA_PATH_c03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
+  DB_MODELS_TRAIN_PATH: "data/models_train_test.duckdb"
+  LOGS_PATH: "logs/"
+  OUTPUT_PATH: "/home/joacosk/Documents/maestria/Q2/script_project/output"
+  CSV_COMPETENCIA_2: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
+  PATH_FEATURES_SELECTION: "gs://joaquinrk_data_bukito3/datasets/features_selection.txt"
+
 # NOMBRE EXPERIMENTO
-STUDY_NAME_OPTUNA: "lgb_optimization_exp1_vm"
+#STUDY_NAME_OPTUNA: "lgb_optimization_exp1_vm"
+vm:
+  STORAGE_OPTUNA: "sqlite:////home/joaquinrk_data/buckets/b1/optimizations/optuna_study.db"
+  DIR_MODELS: "/home/joaquinrk_data/buckets/b1/models/"
+  DB_PATH: "/home/joaquinrk_data/buckets/b1/datasets/churn.duckdb"
+  DATA_PATH: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
+  DATA_PATH_FEATURES: "gs://joaquinrk_data_bukito3/datasets/competencia_03_features.csv.gz"
+  DB_MODELS_TRAIN_PATH: "/home/joaquinrk_data/buckets/b1/datasets/models_train_test.duckdb"
+  LOGS_PATH: "/home/joaquinrk_data/dmeyf-project/logs"
+  OUTPUT_PATH: "/home/joaquinrk_data/buckets/b1/outputs"
+  CSV_COMPETENCIA_2: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
+  PATH_FEATURES_SELECTION: "gs://joaquinrk_data_bukito3/datasets/features_selection.txt"
 
-N_TRIALS: 10                                  # 20 warmup + 30 bayesianos
-N_STARTUP_TRIALS: 20
-NFOLD: 5
-EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
+optimization:
+  # --- Configuración del Experimento ---
+  STUDY_NAME_OPTUNA: 'c03_semillerio_US_20porciento_desde_202001'
+  #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
+  N_EXPERIMENTS: 3        # Semillerío: Número de modelos con semillas distintas
+  SEMILLERIO: 100          # Número de predicciones a promediar por experimento (Tu código original usaba la longitud de 'semillas')
+  N_TRIALS: 20                                  # 20 warmup + 30 bayesianos
+  N_STARTUP_TRIALS: 20
+  NFOLD: 5
+  EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
+  N_BOOSTS: 1000
+  # Numero de modelos que agarro de la optimizacion hiperparámetros para entrenar
+  TOP_K_MODEL: 5
 
+# --- Parámetros Buscables (Se exploran en Optuna) ---
+  searchable_params:
+    num_leaves:
+      type: integer
+      lower: 2
+      upper: 100
+    learning_rate:
+      type: float
+      lower: 0.009
+      upper: 0.5
+      log: true
+    min_data_in_leaf:
+      type: integer
+      lower: 20
+      upper: 1000
+    feature_fraction:
+      type: float
+      lower: 0.05
+      upper: 1.0
+    bagging_freq:
+       type: integer
+       lower: 0
+       upper: 5
+    neg_bagging_fraction:
+       type: float
+       lower: 0.01
+       upper: 1.0
+    pos_bagging_fraction:
+       type: float
+       lower: 0.01
+       upper: 1.0
 
+  # --- Parámetros Fijos de LightGBM ---
+  fixed_params:
+    objective: binary
+    verbosity: -1
+    metric: None
+    boosting_type: gbdt
+    max_bin: 31
+    boost_from_average: TRUE
+    feature_pre_filter: FALSE
+    force_row_wise: TRUE
+    extra_trees: TRUE
+    # AGREGAMOS EL MÁXIMO DE RONDAS
+    num_boost_round: 1000 # <-- Máximo de iteraciones para que el ES lo detenga
+
+preprocessing:
+  SUB_SAMPLE: 0.2
+  NUN_WINDOW_LOAD: 2
+  NUN_WINDOW: 2
+  #COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
+  #                   'mprestamos_personales','cprestamos_personales']
+#  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales','Master_Finiciomora',
+#'Master_Fvencimiento','Visa_Finiciomora']
+  #COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales']
+  COLUMNAS_EXCLUIR: []
+  PSI_2021_FEATURES: ['Master_Fvencimiento',
+'Master_fultimo_cierre',
+'Master_mfinanciacion_limite',
+'Master_mlimitecompra',
+'Master_mpagado',
+'Visa_fultimo_cierre',
+'Visa_mfinanciacion_limite',
+'Visa_mlimitecompra',
+'Visa_mpagado',
+'cpayroll_trx',
+'mpayroll',
+'q_producto_master',
+'q_producto_visa']
 
 # ------------------------------------------------------------------
-# NUEVA VARIABLE PARA CONTROL DE FLUJO
-# Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT'
-START_POINT: "PREDICT"
-# ------------------------------------------------------------------
+
+seeds:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  SEED: 51123478 # SEED para fijar randomizaciones
 
 
-OPTIMIZAR: True
 
-competencia01:
-  SEEDS: [ 155555, 555555, 551155, 515151, 151515]
-  MONTH_TRAIN: [202102,202103]
-  MONTH_VALIDATION: [202103]
-  MONTH_TEST: [202104]
-  MONTH_PRED: [202106]
+competencia03:
 
-  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
+  MONTHS_DROP_LOAD : [201905, 201910, 202006]
+  BQ_PROJECT: "dmecoyfin-250928192534125"
+  BQ_DATASET: "dmeyf"
+  BQ_TABLE: "c03"
+  BQ_TABLE_TARGETS: "targets"
+  BQ_TABLE_FEATURES: "c03_features"
+  BQ_TABLE_FEATURES_HISTORICAL: "c03_features_historical"
+
+  TARGET: "clase_ternaria_binaria"           # ajustá al nombre real en tu CSV
   ID_COL: "numero_de_cliente"
 
-  # negocio (por si luego cambias a métrica custom de ganancia)
   GANANCIA_ACIERTO: 780000
   COSTO_ESTIMULO: 20000
 
-competencia02:
 
-  BQ_PROJECT: "dmecoyfin-250928192534125"
-  BQ_DATASET: "dmeyf"
-  BQ_TABLE: "c02"
-  BQ_TABLE_TARGETS: "targets"
-  BQ_TABLE_FEATURES: "features"
-
-  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
-  MONTH_TRAIN: [ 202102,202103 ]
-  MONTH_VALIDATION: [ 202103 ]
-  MONTH_TEST: [ 202104 ]
-  MONTH_PRED: [ 202106 ]
-
-  TARGET: "clase_ternaria_binaria2"           # ajustá al nombre real en tu CSV
-  ID_COL: "numero_de_cliente"
+flags:
+  # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
+  NUEVA_BASE: false
+  START_POINT: "TRAIN"        # o "PREDICT" según etapa
+  RUN_OPTIMIZATION: false       # corre optuna si faltan trials
+  RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
+  TOP_K_MODEL: 5

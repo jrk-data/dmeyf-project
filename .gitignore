@@ -5,7 +5,7 @@ logs/*
 models/*
 
 <<<<<<< HEAD
-TESTEOS_C2.ipynb
+notebooks/TESTEOS_C2.ipynb
 =======
 *.ipynb__pycache__/
 *.pyc
