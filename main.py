@@ -122,7 +122,7 @@ def main():
 
             # Consolidación (si aplica)
             try:
-                COLUMNS_TO_FIX = {"tmobile_app": "FLOAT64", "cmobile_app_trx": "FLOAT64"}
+                COLUMNS_TO_FIX = {"tmobile_app": "FLOAT64", "cmobile_app_trx": "FLOAT64", "Master_Finiciomora": "FLOAT64","Visa_Finiciomora": "FLOAT64"}
                 consolidate_tables_bq(
                     project_id=PROJECT_ID, dataset_id=DATASET_ID,
                     final_table_id=FINAL_TABLE_ID,
