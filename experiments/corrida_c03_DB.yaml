@@ -16,7 +16,7 @@ flags:
 # Configuración BigQuery (Necesaria para saber dónde escribir)
 competencia03:
   BQ_PROJECT: "dmecoyfin-250928192534125"
-  BQ_DATASET: "dmeyf-prueba"
+  BQ_DATASET: "prueba"
   BQ_TABLE: "c03"
   BQ_TABLE_TARGETS: "targets"
   BQ_TABLE_FEATURES: "c03_features"
