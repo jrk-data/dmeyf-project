@@ -551,6 +551,7 @@ def pred_ensamble_modelos(
 
 
 def pred_ensamble_desde_experimentos(
+        def pred_ensamble_desde_experimentos(
         Xif: pd.DataFrame,
         experiments: list[dict],
         k: int,  # K modelos (Top K)
@@ -558,120 +559,209 @@ def pred_ensamble_desde_experimentos(
         output_basename: str,
         resumen_csv_name: str = "resumen_ganancias.csv",
         selected_ranks: list = None,
-        cut_off_rank: int = 10000  # <--- NUEVO ARGUMENTO (K Envíos)
+        cut_off_rank: int = 10000
 ) -> pd.DataFrame:
-    if isinstance(Xif, pl.DataFrame): Xif = Xif.to_pandas()
-    Xif = _coerce_object_cols(Xif)
+    logger.info("============== INICIO PREDICCIÓN ENSAMBLE MULTI-EXPERIMENTO ==============")
 
-    # Inicializamos estructura para sumar probabilidades
-    # Usamos un diccionario o asignamos directo al DF si el índice está alineado
-    # Para seguridad, trabajaremos sobre una copia con indices reseteados
+    # 1. Validación de Datos de Entrada
+    if isinstance(Xif, pl.DataFrame):
+        Xif = Xif.to_pandas()
+
+    try:
+        Xif = _coerce_object_cols(Xif)
+        logger.info(f"📊 Datos de entrada cargados. Shape: {Xif.shape}")
+        if 'numero_de_cliente' not in Xif.columns:
+            logger.error("❌ La columna 'numero_de_cliente' no está en el DataFrame.")
+            return pd.DataFrame()
+    except Exception as e:
+        logger.error(f"❌ Error al procesar/coercionar el DataFrame de entrada: {e}")
+        return pd.DataFrame()
+
+    # Inicializamos estructura
     df_accum = Xif[['numero_de_cliente', 'foto_mes']].copy()
     df_accum['sum_proba'] = 0.0
 
     modelos_contados = 0
 
+    # 2. Conexión a DuckDB
+    con = None
     try:
-        con = duckdb.connect(str(config.DB_MODELS_TRAIN_PATH))
+        db_path = str(config.DB_MODELS_TRAIN_PATH)
+        con = duckdb.connect(db_path)
         table_name = _resumen_table_name(resumen_csv_name)
-    except:
-        con = None
+        logger.info(f"✅ Conexión a DuckDB exitosa en: {db_path}")
+    except Exception as e:
+        logger.warning(f"⚠️ DuckDB no disponible o error de conexión: {e}. Se intentará usar CSV.")
 
-    logger.info(f"🔮 Iniciando Ensamble Soft (Promedio) - Multi-Experimento.")
-    if selected_ranks: logger.info(f"🎯 Filtro Ranks: {selected_ranks}")
-    logger.info(f"✂️ Corte de envíos (Rank): {cut_off_rank}")
+    logger.info(
+        f"🔮 Configuración Ensamble: Ranks={selected_ranks if selected_ranks else 'Auto (Top K)'} | Corte Envios={cut_off_rank}")
 
-    for item in experiments:
+    # 3. Iteración por Experimentos
+    for i, item in enumerate(experiments):
         base_dir = Path(item["dir"])
         experimento = item["experimento"]
+
+        logger.info(f"--- Procesando Experimento {i + 1}/{len(experiments)}: '{experimento}' ---")
+        logger.info(f"    📂 Directorio: {base_dir}")
 
         limit_sql = k if (not selected_ranks) else 100
         df_candidates = pd.DataFrame()
 
-        # Obtener candidatos (DuckDB o CSV)
+        # A. Intentar obtener candidatos desde DuckDB
         if con:
             try:
                 q = f"SELECT modelo, ganancia_max FROM {table_name} WHERE experimento = ? ORDER BY ganancia_max DESC LIMIT {limit_sql}"
                 df_candidates = con.execute(q, [experimento]).df()
-            except:
-                pass
+                if not df_candidates.empty:
+                    logger.info(f"    ✅ {len(df_candidates)} candidatos obtenidos desde DuckDB.")
+            except Exception as e:
+                logger.debug(f"    ℹ️ Falló query DuckDB (puede ser normal si no existe la tabla): {e}")
 
+        # B. Fallback a CSV si DuckDB falló o vino vacío
         if df_candidates.empty:
             csv_p = base_dir / resumen_csv_name
             if csv_p.exists():
-                full = pd.read_csv(csv_p)
-                df_candidates = full[full.experimento == experimento].sort_values('ganancia_max', ascending=False).head(
-                    limit_sql)
+                try:
+                    full = pd.read_csv(csv_p)
+                    # Verificar si existe la columna experimento
+                    if 'experimento' in full.columns:
+                        df_candidates = full[full.experimento == experimento].sort_values('ganancia_max',
+                                                                                          ascending=False).head(
+                            limit_sql)
+                        logger.info(f"    ✅ {len(df_candidates)} candidatos obtenidos desde CSV ({csv_p.name}).")
+                    else:
+                        logger.warning(f"    ⚠️ El CSV {csv_p} no tiene columna 'experimento'.")
+                except Exception as e:
+                    logger.error(f"    ❌ Error leyendo CSV {csv_p}: {e}")
+            else:
+                logger.warning(f"    ⚠️ No se encontró ni tabla en DuckDB ni archivo CSV en: {csv_p}")
 
-        if df_candidates.empty: continue
+        if df_candidates.empty:
+            logger.warning(f"    ⏭️ Saltando experimento '{experimento}': No hay modelos candidatos.")
+            continue
 
-        # Iterar modelos
-        for _, row in df_candidates.iterrows():
-            if (not selected_ranks) and (modelos_contados >= k): break
+        # 4. Iterar Modelos dentro del Experimento
+        modelos_procesados_exp = 0
 
-            modelo = str(row['modelo'])
+        for idx, row in df_candidates.iterrows():
+            # Control de Top K si no hay selección manual
+            if (not selected_ranks) and (modelos_procesados_exp >= k):
+                break
 
-            # Filtro Manual
+            modelo_nombre = str(row['modelo'])
+
+            # Filtro Manual por Rank
             if selected_ranks:
-                rank = _extract_rank_from_filename(modelo)
-                if rank not in selected_ranks: continue
+                rank = _extract_rank_from_filename(modelo_nombre)
+                if rank not in selected_ranks:
+                    # logger.debug(f"       Skipping {modelo_nombre} (Rank {rank} no en target)")
+                    continue
 
-            # Buscar archivo
-            m_path = base_dir / modelo
-            if not m_path.suffix:
+            # Resolución de archivo (.txt / .bin)
+            m_path = base_dir / modelo_nombre
+            found = False
+
+            # Chequeo directo o con sufijos
+            if m_path.exists():
+                found = True
+            elif not m_path.suffix:
                 if (m_path.with_suffix('.txt')).exists():
                     m_path = m_path.with_suffix('.txt')
+                    found = True
                 elif (m_path.with_suffix('.bin')).exists():
                     m_path = m_path.with_suffix('.bin')
+                    found = True
 
-            if not m_path.exists(): continue
+            if not found:
+                logger.warning(f"    ❌ ARCHIVO NO ENCONTRADO: {modelo_nombre} en {base_dir}")
+                continue
 
-            # PREDICCIÓN (PROBABILIDAD PURA)
+            # PREDICCIÓN
             try:
+                # Carga del Booster
                 bst = lgb.Booster(model_file=str(m_path))
-                # Nota: Predecimos probabilidad, NO binarizamos
-                y_prob = bst.predict(Xif[bst.feature_name()])
 
-                # Sumamos al acumulador
+                # Validación de features
+                model_features = bst.feature_name()
+                missing_cols = [feat for feat in model_features if feat not in Xif.columns]
+
+                if missing_cols:
+                    logger.error(
+                        f"    ❌ Error Features: Al dataframe le faltan columnas requeridas por {m_path.name}: {missing_cols[:5]}...")
+                    continue
+
+                # Predicción
+                # Optimizacion: Pasar solo las columnas necesarias
+                y_prob = bst.predict(Xif[model_features])
+
+                # Acumulación
                 df_accum['sum_proba'] += y_prob
                 modelos_contados += 1
+                modelos_procesados_exp += 1
+
+                # Log periódico para no saturar si son muchos
+                if modelos_contados % 5 == 0:
+                    logger.info(f"       Modelos acumulados hasta ahora: {modelos_contados}...")
 
             except Exception as e:
-                logger.error(f"Error con modelo {modelo}: {e}")
+                logger.error(f"    ❌ Error CRÍTICO prediciendo con {m_path.name}: {e}")
+                logger.error(traceback.format_exc())  # Imprime el stack trace completo
 
-    if con: con.close()
+    # Cierre de conexión
+    if con:
+        try:
+            con.close()
+        except:
+            pass
 
+    # 5. Validación final post-loop
     if modelos_contados == 0:
-        logger.error("❌ No se pudo predecir con ningún modelo.")
+        logger.error("❌ ERROR FATAL: No se pudo predecir con ningún modelo. Verifique rutas y nombres de experimentos.")
         return pd.DataFrame()
 
-    # 1. Promediar
-    df_accum['prob_promedio'] = df_accum['sum_proba'] / modelos_contados
+    logger.info(f"✅ Total modelos ensamblados: {modelos_contados}")
 
-    # 2. Ordenar Descendente por Probabilidad
-    df_accum = df_accum.sort_values('prob_promedio', ascending=False)
+    try:
+        # 1. Promediar
+        df_accum['prob_promedio'] = df_accum['sum_proba'] / modelos_contados
 
-    # 3. Generar ranking (0 a N-1)
-    # Reset index para asegurar que el iloc funcione linealmente
-    df_accum = df_accum.reset_index(drop=True)
+        # Log de sanidad sobre probabilidades
+        min_p = df_accum['prob_promedio'].min()
+        max_p = df_accum['prob_promedio'].max()
+        mean_p = df_accum['prob_promedio'].mean()
+        logger.info(f"📊 Estadísticas Probabilidades -> Min: {min_p:.4f}, Max: {max_p:.4f}, Mean: {mean_p:.4f}")
 
-    # 4. Asignar 1 a los primeros 'cut_off_rank', 0 al resto
-    df_accum['Predicted'] = 0
-    # Cuidado: Si hay menos registros que el corte, asigna todo 1, se controla con min
-    corte_real = min(cut_off_rank, len(df_accum))
-    df_accum.iloc[:corte_real, df_accum.columns.get_loc('Predicted')] = 1
+        # 2. Ordenar Descendente por Probabilidad
+        df_accum = df_accum.sort_values('prob_promedio', ascending=False)
 
-    logger.info(f"✅ Promedio calculado sobre {modelos_contados} modelos.")
-    logger.info(
-        f"✅ Asignados {corte_real} positivos (Prob min corte: {df_accum.iloc[corte_real - 1]['prob_promedio']:.4f})")
+        # 3. Generar ranking (0 a N-1)
+        df_accum = df_accum.reset_index(drop=True)
 
-    # Guardado
-    suffix = "_seleccion_manual" if selected_ranks else ""
-    out = Path(output_path) / f"{output_basename}{suffix}.csv"
-    out.parent.mkdir(parents=True, exist_ok=True)
+        # 4. Asignar 1 a los primeros 'cut_off_rank'
+        df_accum['Predicted'] = 0
+        corte_real = min(cut_off_rank, len(df_accum))
 
-    df_final = df_accum[['numero_de_cliente', 'Predicted']]
-    df_final.to_csv(out, index=False)
-    logger.info(f"Ensamble Soft guardado en: {out}")
+        if corte_real > 0:
+            df_accum.iloc[:corte_real, df_accum.columns.get_loc('Predicted')] = 1
+            prob_corte = df_accum.iloc[corte_real - 1]['prob_promedio']
+            logger.info(f"✂️ Corte aplicado en ranking {corte_real}. Probabilidad del corte: {prob_corte:.5f}")
+        else:
+            logger.warning("⚠️ El corte real es 0 (posiblemente DataFrame vacío).")
 
-    return df_final
+        # Guardado
+        suffix = "_seleccion_manual" if selected_ranks else ""
+        out_dir = Path(output_path)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_file = out_dir / f"{output_basename}{suffix}.csv"
+
+        df_final = df_accum[['numero_de_cliente', 'Predicted']]
+        df_final.to_csv(out_file, index=False)
+        logger.info(f"💾 Archivo guardado exitosamente: {out_file}")
+        logger.info("============== FIN PREDICCIÓN ==============")
+
+        return df_final
+
+    except Exception as e:
+        logger.error(f"❌ Error en la etapa final de agregación/guardado: {e}")
+        logger.error(traceback.format_exc())
+        return pd.DataFrame()
