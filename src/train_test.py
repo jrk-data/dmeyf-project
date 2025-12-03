@@ -11,6 +11,7 @@ from datetime import datetime
 import duckdb
 from src.utils import _coerce_object_cols
 import re
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -551,7 +552,6 @@ def pred_ensamble_modelos(
 
 
 def pred_ensamble_desde_experimentos(
-        def pred_ensamble_desde_experimentos(
         Xif: pd.DataFrame,
         experiments: list[dict],
         k: int,  # K modelos (Top K)
