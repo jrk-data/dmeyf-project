@@ -1,4 +1,4 @@
-CARGAR_HISTORIA_COMPLETA: True
+CARGAR_HISTORIA_COMPLETA: false
 
 # Flags de control de flujo
 flags:
@@ -7,7 +7,7 @@ flags:
   START_POINT: "TRAIN"        # o "PREDICT" según etapa
   RUN_OPTIMIZATION: false       # corre optuna si faltan trials
   RUN_CALC_CURVAS: true        # calcula curvas (y thr_opt) para meses que tengan TEST_BY_TRAIN
-  TOP_K_MODEL: 5
+  TOP_K_MODEL: 8
 
 experiment:
   STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
@@ -19,7 +19,7 @@ experiment:
     202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
     202101, 202102, 202103  ]
   #MONTH_TRAIN: [202102,202103]
-  MONTH_VALIDATION: [202106]
+  MONTH_VALIDATION: [202107]
   #MONTH_VALIDATION: [202103]
   MONTH_TEST: [202105]
   MONTH_PRED: [202107]

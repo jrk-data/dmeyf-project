@@ -1,7 +1,6 @@
 import yaml
 import os
 import logging
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -123,28 +122,60 @@ except Exception as e:
 
 def setup_environment(is_vm_environment):
     """
-    Función que recibe un booleano y ejecuta el IF/ELSE
-    correspondiente.
+    Configura los paths globales. Modifica DIR_MODELS para incluir
+    una subcarpeta basada en el último mes de entrenamiento definido
+    en el archivo del experimento (ej: corrida_02_b.yaml).
     """
-    global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH, PATH_FEATURES_SELECTION
+    global DB_PATH, LOGS_PATH, OUTPUT_PATH, STORAGE_OPTUNA, DIR_MODELS, DATA_PATH, DB_MODELS_TRAIN_PATH
+    global DATA_PATH_C02, DATA_PATH_C03, DATA_PATH_FEATURES, PATH_FEATURES_SELECTION
 
+    # 1. Seleccionar paths base (VM o Local) desde config.yaml
     if is_vm_environment:
         paths = _cfgGeneral["vm"]
+        logger.info("🔧 Entorno: VM")
     else:
         paths = _cfgGeneral["local"]
-    # Defino los paths
+        logger.info("🔧 Entorno: LOCAL")
+
+    # 2. Asignar variables estándar
     DB_PATH = paths.get("DB_PATH", "data/churn.duckdb")
     LOGS_PATH = paths.get("LOGS_PATH", "logs/")
     OUTPUT_PATH = paths.get("OUTPUT_PATH", "output/")
     STORAGE_OPTUNA = paths.get("STORAGE_OPTUNA", None)
-    DIR_MODELS = paths.get("DIR_MODELS", "src/models/default/")
+
     DATA_PATH_C02 = paths.get("DATA_PATH_C02", "data/competencia_01.csv")
     DATA_PATH_C03 = paths.get("DATA_PATH_C03", "data/competencia_01.csv")
     DB_MODELS_TRAIN_PATH = paths.get("DB_MODELS_TRAIN_PATH", "data/models_train_test.duckdb")
     DATA_PATH_FEATURES = paths.get("DATA_PATH_FEATURES", "data/features_train_test.csv")
     PATH_FEATURES_SELECTION = paths.get("PATH_FEATURES_SELECTION", "data/features_selection.csv")
 
-#  MONTH_TRAIN: [   201901,201902,201903,201904,201905,201906,201907,
-#                  201908,201909,201910,201911,201912,202001,202002,
-#                  202003,202004,202005,202006, 202007, 202008, 202009,
-#                  202010, 202011, 202012, 202101,202102 ]
+    # -------------------------------------------------------------------------
+    # 3. LÓGICA DINÁMICA PARA DIR_MODELS
+    # -------------------------------------------------------------------------
+    # Path base definido en config.yaml (ej: /home/.../models/)
+    base_dir_models = paths.get("DIR_MODELS", "src/models/default/")
+
+    try:
+        # Recuperamos la sección 'experiment' que viene de corrida_02_b.yaml
+        exp_config = _cfgGeneral.get("experiment", {})
+        raw_train_months = exp_config.get("MONTH_TRAIN", [])
+
+        if raw_train_months:
+            # Tomamos el último mes para el nombre de la carpeta
+            ultimo_mes = sorted(list(raw_train_months))[-1]
+            suffix = f"meses_entrenados_hasta_{ultimo_mes}"
+
+            # Construimos la ruta completa de forma segura
+            DIR_MODELS = os.path.join(base_dir_models, suffix)
+            logger.info(f"📂 DIR_MODELS dinámico: {DIR_MODELS}")
+        else:
+            # Si la lista está vacía, usamos el base
+            DIR_MODELS = base_dir_models
+            logger.warning("⚠️ MONTH_TRAIN vacío en el experimento. Usando ruta base.")
+
+    except Exception as e:
+        logger.error(f"❌ Error construyendo ruta dinámica: {e}")
+        DIR_MODELS = base_dir_models
+
+    # Limpieza final de la ruta (quita barras dobles si las hubiera)
+    DIR_MODELS = os.path.normpath(DIR_MODELS)

@@ -1,5 +1,5 @@
 CARGAR_HISTORIA_COMPLETA: false
-CONSOLIDATED_PATH: 'CONSOLIDATED' # se usa para guardar carpetas con meses por mes
+
 # Flags de control de flujo
 flags:
   # Opciones: 'DATA', 'FEATURES', 'OPTUNA', 'TRAIN', 'PREDICT', 'SELECTION'
@@ -10,19 +10,19 @@ flags:
   TOP_K_MODEL: 8
 
 experiment:
-  STUDY_NAME_OPTUNA: "c03_semillerio_US_02porciento_desde_202001"
+  STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
   #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   # Meses de entrenamiento (los que vas a correr en este job)
   # IMPORTANTE --> Agregar el mes de testeo también en train
   # aunque se agregue acá la validación, el código después lo separa
   MONTH_TRAIN: [
     202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
-    202101, 202102, 202103   ]
+    202101, 202102, 202103, 202104, 202105  ]
   #MONTH_TRAIN: [202102,202103]
   MONTH_VALIDATION: [202107]
   #MONTH_VALIDATION: [202103]
-  MONTH_TEST: [202105]
-  MONTH_PRED: [202107]
+  MONTH_TEST: [202107]
+  MONTH_PRED: [202109]
   MESES_JUNTOS: True
 
   # Mes(es) a predecir para cada escenario de negocio
@@ -44,7 +44,7 @@ experiment:
           
 optimization:
   # --- Configuración del Experimento ---
-  STUDY_NAME_OPTUNA: 'c03_semillerio_US_02porciento_desde_202001'
+  STUDY_NAME_OPTUNA: 'c03_semillerio_US_20porciento_desde_202001'
   #STUDY_NAME_OPTUNA: 'c03_prueba_rapida'
   N_EXPERIMENTS: 3        # Semillerío: Número de modelos con semillas distintas
   SEMILLERIO: 100          # Número de predicciones a promediar por experimento (Tu código original usaba la longitud de 'semillas')
@@ -54,7 +54,7 @@ optimization:
   EARLY_STOPPING_ROUNDS: 200                    # opcional si querés early stopping en CV
   N_BOOSTS: 1000
   # Numero de modelos que agarro de la optimizacion hiperparámetros para entrenar
-  TOP_K_MODEL: 8
+  TOP_K_MODEL: 5
 
   # --- Parámetros Buscables (Se exploran en Optuna) ---
   searchable_params:
@@ -103,15 +103,15 @@ optimization:
     num_boost_round: 1000 # <-- Máximo de iteraciones para que el ES lo detenga
 
 preprocessing:
-  SUB_SAMPLE: 0.02
+  SUB_SAMPLE: 0.2
   NUN_WINDOW_LOAD: 2
   NUN_WINDOW: 2
   #COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
   #                   'mprestamos_personales','cprestamos_personales']
   #  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales','Master_Finiciomora',
   #'Master_Fvencimiento','Visa_Finiciomora']
-  COLUMNAS_EXCLUIR: []
-  #COLUMNAS_EXCLUIR: [ ]
+  #COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales']
+  COLUMNAS_EXCLUIR: [ ]
   PSI_2021_FEATURES: [ 'Master_Fvencimiento',
                        'Master_fultimo_cierre',
                        'Master_mfinanciacion_limite',
