@@ -96,8 +96,9 @@ def main():
             # Carga DATA C02
             try:
                 logger.info("--- Iniciando carga de Competencia 02 ---")
-                # 1. Leer CSV con Polars
-                df_c02 = select_c02_polars(config.DATA_PATH_C02)
+
+                # 1. Leer CSV de la segunda competencia con Polars
+                df_c02 = select_c02_polars()
 
                 # 2. Subir a BigQuery (tabla 'c02')
                 create_bq_table_c02(df_c02, PROJECT_ID, DATASET_ID, "c02")
