@@ -80,14 +80,9 @@ def load_gcs_to_bigquery_via_duckdb(
 
     # 2. Cargar DataFrame a BigQuery
     try:
-        # Se Intenta crear el Dataset en BigQuery en caso que no exista
-        # 1) Cliente BQ
         client = bigquery.Client(project=project_id)
 
-        # 2) Crear dataset si no existe
-        dataset_ref = bigquery.Dataset(f"{project_id}.{dataset_id}")
-        client.create_dataset(dataset_ref, exists_ok=True)
-        logger.info(f"✅ Dataset '{dataset_id}' verificado/creado.")
+
 
         table_ref = client.dataset(dataset_id).table(table_id)
 
@@ -173,7 +168,9 @@ def consolidate_tables_bq(
         job.result()
 
         count_query = f"SELECT count(*) FROM {final_table_ref}"
-        count_result = client.query(count_query).result().next()[0]
+        query_job = client.query(count_query)
+        rows = list(query_job.result())  # Convertimos el iterador a lista
+        count_result = rows[0][0]  # Tomamos el primer valor de la primera fila
 
         logger.info(f"✅ Tablas consolidadas exitosamente en '{final_table_id}'. Total de filas: {count_result:,}")
 
@@ -273,16 +270,16 @@ def create_churn_targets_bq(
 
 # ################### Lógica para competencia 2 y 3##############################
 
-def select_c03_polars(path_csv_competencia_2):
+def select_c02_polars():
     '''
     Esta función lee el csv de competencia 2 y lo convierte a polars.
     Hace una lectura rápida de los primeors 10 registros del csv para crear el schema y pasarlo luego a BigQuery.
     '''
     # tomo una muestra para obtener schema
-    logger.info("Creando schema para competencia_03...")
+    logger.info("Creando schema para competencia_02...")
     try:
         df = pl.read_csv(
-        "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz",
+        config.DATA_PATH_C02,
         n_rows=10,
         schema_overrides={"mprestamos_prendarios": pl.Float64},
         infer_schema_length=1000,
@@ -305,7 +302,7 @@ def select_c03_polars(path_csv_competencia_2):
         # Leo todo el csv con el schema que le paso a polars
         df = (
             pl.read_csv(
-                path_csv_competencia_2,
+                config.DATA_PATH_C02,
                 schema_overrides=schema_modificado,
                 infer_schema_length=0  # desactiva inferencia de tipos
             )
@@ -317,7 +314,7 @@ def select_c03_polars(path_csv_competencia_2):
         logger.error(f'Error al leer csv: {e}')
         raise
 
-def create_bq_table_c03(df, PROJECT, DATASET, TABLE):
+def create_bq_table_c02(df, PROJECT, DATASET, TABLE):
     '''
     Esta función crea una tabla en BigQuery a partir de un DataFrame de Polars.
        '''

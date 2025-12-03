@@ -50,7 +50,7 @@ logger.info(f"STUDY_NAME: {config.STUDY_NAME_OPTUNA}")
 
 # --- Import tardío del resto (evita leer config antes de tiempo) ---
 from src.loader import (load_gcs_to_bigquery_via_duckdb, create_churn_targets_bq, consolidate_tables_bq,
-                        create_bq_table_c03, select_data_c03, tabla_productos_por_cliente
+                        create_bq_table_c02, select_c02_polars, tabla_productos_por_cliente
                         )
 from src.features import (
     create_intra_month_features_bq, create_historical_features_bq,
@@ -81,7 +81,37 @@ def main():
             DATASET_ID = config.BQ_DATASET
             FINAL_TABLE_ID = "c03"
 
-            # Carga C03
+            try:
+                # Se Intenta crear el Dataset en BigQuery en caso que no exista
+                # 1) Cliente BQ
+                client = bigquery.Client(project=PROJECT_ID)
+
+                # 2) Crear dataset si no existe
+                dataset_ref = bigquery.Dataset(f"{PROJECT_ID}.{DATASET_ID}")
+                client.create_dataset(dataset_ref, exists_ok=True)
+                logger.info(f"✅ Dataset '{DATASET_ID}' verificado/creado.")
+            except Exception as e:
+                logger.warning(f'No se creo el dataset {DATASET_ID} en BigQuery.')
+
+            # Carga DATA C02
+            try:
+                logger.info("--- Iniciando carga de Competencia 02 ---")
+
+                # 1. Leer CSV de la segunda competencia con Polars
+                df_c02 = select_c02_polars()
+
+                # 2. Subir a BigQuery (tabla 'c02')
+                create_bq_table_c02(df_c02, PROJECT_ID, DATASET_ID, "c02")
+
+                # Liberar memoria manualmente
+                del df_c02
+                import gc
+                gc.collect()
+            except Exception as e:
+                logger.error(f"❌ Falló la carga de C02: {e}")
+                raise
+
+            # CARGA DATA C03
             try:
                 load_gcs_to_bigquery_via_duckdb(
                     project_id=PROJECT_ID, dataset_id=DATASET_ID, table_id="ult_mes",
@@ -92,7 +122,7 @@ def main():
 
             # Consolidación (si aplica)
             try:
-                COLUMNS_TO_FIX = {"tmobile_app": "FLOAT64", "cmobile_app_trx": "FLOAT64"}
+                COLUMNS_TO_FIX = {"tmobile_app": "FLOAT64", "cmobile_app_trx": "FLOAT64", "Master_Finiciomora": "FLOAT64","Visa_Finiciomora": "FLOAT64"}
                 consolidate_tables_bq(
                     project_id=PROJECT_ID, dataset_id=DATASET_ID,
                     final_table_id=FINAL_TABLE_ID,
