@@ -1,0 +1,55 @@
+seeds:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  SEED: 51123478 # SEED para fijar randomizaciones
+
+# --- ETAPA 3: ENTRENAMIENTO Y CURVAS ---
+CARGAR_HISTORIA_COMPLETA: false
+CONSOLIDATED_PATH: 'EVALUACION_MAYO' # Nombre de carpeta para guardar estos modelos
+
+flags:
+  NUEVA_BASE: false
+  START_POINT: "TRAIN"        # Entrena y calcula curvas
+  RUN_OPTIMIZATION: false
+  RUN_CALC_CURVAS: true       # Genera los gráficos y el resumen_ganancias.csv
+  TOP_K_MODEL: 8              # Entrena los mejores 8
+  SELECTED_RANKS: []          # Dejar vacío para usar el Top 8 automático
+
+experiment:
+  # Debe coincidir con el paso 2 para leer la DB de Optuna
+  STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
+
+  # Meses de entrenamiento solicitados
+  MONTH_TRAIN: [
+    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
+    202101, 202102, 202103
+  ]
+
+  # Mes para graficar las curvas (evaluación)
+  MONTH_VALIDATION: [202105]
+  MONTH_TEST: [202105]       # Aquí es donde se evalúan las curvas
+  MONTH_PRED: []             # No predecimos futuro en esta etapa
+
+  MESES_JUNTOS: True
+  K_ENVIO_PRED: 11000
+
+optimization:
+  # Solo necesitamos TOP_K_MODEL aquí, el resto es herencia
+  TOP_K_MODEL: 8
+
+seeds:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  SEED: 51123478
+
+preprocessing:
+  SUB_SAMPLE: 0.2
+  NUN_WINDOW: 2
+  COLUMNAS_EXCLUIR: []
+  PSI_2021_FEATURES: [ 'Master_Fvencimiento', 'Master_mlimitecompra', 'mpayroll' ] # Asegurar mismas features que optuna
+
+competencia03:
+  BQ_PROJECT: "dmecoyfin-250928192534125"
+  BQ_DATASET: "dmeyf"
+  BQ_TABLE_FEATURES_HISTORICAL: "c03_features_historical"
+  TARGET: "clase_ternaria_binaria"
+  GANANCIA_ACIERTO: 780000
+  COSTO_ESTIMULO: 20000

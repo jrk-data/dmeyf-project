@@ -1,0 +1,68 @@
+seeds:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  SEED: 51123478 # SEED para fijar randomizaciones
+
+# --- ETAPA 2: OPTIMIZACIÓN DE HIPERPARÁMETROS ---
+CARGAR_HISTORIA_COMPLETA: false # Carga solo lo necesario para optimizar (ahorra RAM/Tiempo)
+
+flags:
+  NUEVA_BASE: false
+  START_POINT: "OPTUNA"       # Ejecuta run_study
+  RUN_OPTIMIZATION: true      # Habilita el loop de Optuna
+  RUN_CALC_CURVAS: false
+  TOP_K_MODEL: 0
+  SELECTED_RANKS: []
+
+experiment:
+  STUDY_NAME_OPTUNA: "c03_semillerio_US_20porciento_desde_202001"
+
+  # Meses definidos para la optimización
+  MONTH_TRAIN: [
+    202001, 202002, 202003, 202004, 202005, 202007, 202008, 202009, 202010, 202011, 202012,
+    202101, 202102, 202103
+  ]
+  # Mes usado por Optuna para validar cada trial (score)
+  MONTH_VALIDATION: [202105] # Usamos Mayo como validación interna de Optuna
+  MONTH_TEST: []
+  MONTH_PRED: []
+
+  MESES_JUNTOS: True
+  K_ENVIO_PRED: 11000
+
+optimization:
+  STUDY_NAME_OPTUNA: 'c03_semillerio_US_20porciento_desde_202001'
+  N_TRIALS: 50                 # Total de trials (ej. 20 warmup + 30 bayesianos)
+  N_STARTUP_TRIALS: 20
+  NFOLD: 5
+  EARLY_STOPPING_ROUNDS: 200
+
+  # Espacio de búsqueda
+  searchable_params:
+    num_leaves: {type: integer, lower: 2, upper: 100}
+    learning_rate: {type: float, lower: 0.009, upper: 0.5, log: true}
+    min_data_in_leaf: {type: integer, lower: 20, upper: 1000}
+    feature_fraction: {type: float, lower: 0.05, upper: 1.0}
+    bagging_freq: {type: integer, lower: 0, upper: 5}
+    neg_bagging_fraction: {type: float, lower: 0.01, upper: 1.0}
+    pos_bagging_fraction: {type: float, lower: 0.01, upper: 1.0}
+
+  fixed_params:
+    objective: binary
+    metric: None
+    boosting_type: gbdt
+    num_boost_round: 1000
+
+preprocessing:
+  SUB_SAMPLE: 0.2
+  NUN_WINDOW: 2
+  COLUMNAS_EXCLUIR: []
+  # Lista de features usadas (copiar de tu canaritos o dejar vacía para usar todas)
+  PSI_2021_FEATURES: [ 'Master_Fvencimiento', 'Master_mlimitecompra', 'mpayroll' ]
+
+competencia03:
+  BQ_PROJECT: "dmecoyfin-250928192534125"
+  BQ_DATASET: "dmeyf"
+  BQ_TABLE_FEATURES_HISTORICAL: "c03_features_historical"
+  TARGET: "clase_ternaria_binaria"
+  GANANCIA_ACIERTO: 780000
+  COSTO_ESTIMULO: 20000

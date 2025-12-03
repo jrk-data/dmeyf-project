@@ -110,7 +110,7 @@ def main():
                                            config.BQ_TABLE_FEATURES)
 
             # Definición de Features para Historial
-            # ... (Lista LAG_VARS igual que tu código original) ...
+
             LAG_VARS = ['Master_cconsumos', 'Master_fultimo_cierre', 'Master_mconsumospesos',
                         'Master_mfinanciacion_limite', 'Master_mlimitecompra', 'Master_mpagominimo',
                         'Master_mpagospesos', 'Master_msaldopesos', 'Master_msaldototal', 'Visa_Fvencimiento',
@@ -131,8 +131,10 @@ def main():
                         'mtarjeta_master_consumo', 'mtarjeta_visa_consumo', 'mtransferencias_emitidas',
                         'mtransferencias_recibidas', 'mttarjeta_visa_debitos_automaticos', 'tcallcenter',
                         'thomebanking', 'tmobile_app']
+
             features_nuevas = ["q_producto_master", "q_producto_visa", "q_producto_general", "ctrx_quarter_normalizado",
                                "mpayroll_sobre_edad"]
+
             LAG_VARS += features_nuevas
             LAG_VARS = list(set(LAG_VARS))
 

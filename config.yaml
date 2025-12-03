@@ -1,12 +1,19 @@
 # --- CONTROLADOR PRINCIPAL ---
-# Aexperimento que se va a correr
-EXPERIMENT_FILE: "experiments/corrida_c03.yaml"
+# Experimento que se va a correr
+
+# Para crear BBDD desde cero -> corrida_c03_DB.yaml
+# Para Optimizar -> corrida_c03_OPT.yaml
+# Para Entrenar, Validar y crear curvas de ganancia -> corrida_c03_Test.yaml
+# Para Predecir -> corrida_c03_Predict.yaml
+
+EXPERIMENT_FILE: "experiments/corrida_c03_DB.yaml"
 
 # --- INFRAESTRUCTURA (No cambia entre experimentos) ---
 # General
 DATA_PATH_C02: "gs://joaquinrk_data_bukito3/datasets/competencia_02_crudo.csv.gz"
 DATA_PATH_C03: "gs://joaquinrk_data_bukito3/datasets/competencia_03_crudo.csv.gz"
 PATH_FEATURES_SELECTION: "gs://joaquinrk_data_bukito3/datasets/features_selection.txt"
+
 
 CARGAR_HISTORIA_COMPLETA: false
 

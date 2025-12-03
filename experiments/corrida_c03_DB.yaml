@@ -1,0 +1,39 @@
+seeds:
+  SEEDS: [ 155555, 555555, 551155, 515151, 151515 ]
+  SEED: 51123478 # SEED para fijar randomizaciones
+
+  # --- ETAPA 1: CREACIÓN DE BASE DE DATOS ---
+CARGAR_HISTORIA_COMPLETA: true # Carga todo para tener historia disponible
+
+flags:
+  NUEVA_BASE: true             # Fuerza la recreación de tablas
+  START_POINT: "DATA"          # Ejecuta solo la parte de ETL
+  RUN_OPTIMIZATION: false
+  RUN_CALC_CURVAS: false
+  TOP_K_MODEL: 0
+  SELECTED_RANKS: []
+
+# Configuración BigQuery (Necesaria para saber dónde escribir)
+competencia03:
+  BQ_PROJECT: "dmecoyfin-250928192534125"
+  BQ_DATASET: "dmeyf-prueba"
+  BQ_TABLE: "c03"
+  BQ_TABLE_TARGETS: "targets"
+  BQ_TABLE_FEATURES: "c03_features"
+  BQ_TABLE_FEATURES_HISTORICAL: "c03_features_historical"
+  MONTHS_DROP_LOAD : [201905, 201910, 202006]
+
+# Parámetros de Feature Engineering
+preprocessing:
+  NUN_WINDOW_LOAD: 2
+  NUN_WINDOW: 2
+  PSI_2021_FEATURES: [] # No se usa en esta etapa, pero debe estar definido para evitar error
+
+experiment:
+  # Dummy values para que no falle la carga de config
+  STUDY_NAME_OPTUNA: "setup_inicial"
+  MONTH_TRAIN: []
+  MONTH_VALIDATION: []
+  MONTH_TEST: []
+  MONTH_PRED: []
+  K_ENVIO_PRED: 11000

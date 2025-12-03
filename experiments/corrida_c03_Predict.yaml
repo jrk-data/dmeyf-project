@@ -114,11 +114,6 @@ preprocessing:
   SUB_SAMPLE: 0.2
   NUN_WINDOW_LOAD: 2
   NUN_WINDOW: 2
-  #COLUMNAS_EXCLUIR: ['Visa_mfinanciacion_limite','Master_mfinanciacion_limite',
-  #                   'mprestamos_personales','cprestamos_personales']
-  #  COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales','Master_Finiciomora',
-  #'Master_Fvencimiento','Visa_Finiciomora']
-  #COLUMNAS_EXCLUIR: ['mprestamos_personales','cprestamos_personales']
   COLUMNAS_EXCLUIR: [ ]
   PSI_2021_FEATURES: [ 'Master_Fvencimiento',
                        'Master_fultimo_cierre',
