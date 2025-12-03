@@ -81,6 +81,18 @@ def main():
             DATASET_ID = config.BQ_DATASET
             FINAL_TABLE_ID = "c03"
 
+            try:
+                # Se Intenta crear el Dataset en BigQuery en caso que no exista
+                # 1) Cliente BQ
+                client = bigquery.Client(project=PROJECT_ID)
+
+                # 2) Crear dataset si no existe
+                dataset_ref = bigquery.Dataset(f"{PROJECT_ID}.{DATASET_ID}")
+                client.create_dataset(dataset_ref, exists_ok=True)
+                logger.info(f"✅ Dataset '{DATASET_ID}' verificado/creado.")
+            except Exception as e:
+                logger.warning(f'No se creo el dataset {DATASET_ID} en BigQuery.')
+
             # Carga C03
             try:
                 load_gcs_to_bigquery_via_duckdb(

@@ -80,14 +80,9 @@ def load_gcs_to_bigquery_via_duckdb(
 
     # 2. Cargar DataFrame a BigQuery
     try:
-        # Se Intenta crear el Dataset en BigQuery en caso que no exista
-        # 1) Cliente BQ
         client = bigquery.Client(project=project_id)
 
-        # 2) Crear dataset si no existe
-        dataset_ref = bigquery.Dataset(f"{project_id}.{dataset_id}")
-        client.create_dataset(dataset_ref, exists_ok=True)
-        logger.info(f"✅ Dataset '{dataset_id}' verificado/creado.")
+
 
         table_ref = client.dataset(dataset_id).table(table_id)
 
